@@ -1,0 +1,60 @@
+name: bacterial_enzyme_prioritization
+steps:
+  - name: prior_input
+    manifest: manifests/00_prior_input.yaml
+    condition: "'genome' not in state"
+    inputs: {}
+    parameters:
+      organism: ecoli_k12
+
+  - name: gene_prediction
+    manifest: manifests/01_prodigal.yaml
+    condition: "'proteins' not in state"
+    inputs:
+      genome: genome
+
+  - name: localization_filter
+    manifest: manifests/02_subcellular_filter.yaml
+    inputs:
+      proteins: proteins
+
+  - name: protein_select
+    manifest: manifests/02b_protein_select.yaml
+    inputs:
+      proteins: proteins
+
+  - name: structure_prediction
+    manifest: manifests/03_alphafold_db.yaml
+    inputs:
+      protein: protein
+
+  - name: quality_assessment
+    manifest: manifests/04_plddt_filter.yaml
+    inputs:
+      structure: structure
+      residue_scores: residue_scores
+    parameters:
+      min_plddt: 70.0
+
+  - name: pocket_finding
+    manifest: manifests/05_pocket_p2rank.yaml
+    inputs:
+      structure: structure
+
+  - name: surface_hydrophobicity
+    manifest: manifests/06_surface_sasa.yaml
+    inputs:
+      structure: structure
+
+  - name: structural_homology
+    manifest: manifests/07_foldseek.yaml
+    inputs:
+      structure: structure
+
+  - name: final_prioritization
+    manifest: manifests/08_prioritizer.yaml
+    inputs:
+      quality_table: quality_table
+      pockets: pockets
+      sasa_table: sasa_table
+      foldseek_table: foldseek_table

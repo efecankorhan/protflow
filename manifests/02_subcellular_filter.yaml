@@ -1,0 +1,12 @@
+name: subcellular_filter
+version: "1.0.0"
+description: Filters intracellular vs extracellular proteins (whole gene set)
+inputs:
+  proteins: SequenceCollection
+outputs:
+  proteins: SequenceCollection
+  filter_table: Table
+execution:
+  type: local
+  command: "python -c \"pass\""
+adapter: protflow.adapters.localization:parse_subcellular_filter

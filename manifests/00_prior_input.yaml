@@ -1,0 +1,13 @@
+name: prior_input
+version: "1.0.0"
+description: "Girdi verisi ve konakçı genom kaynağı (Root Input Provider)"
+inputs: {}
+outputs:
+  genome: Sequence
+  codon_table: Table
+parameters:
+  organism: ecoli_k12
+execution:
+  type: local
+  command: "python -c \"pass\""
+adapter: protflow.adapters.genomics:parse_prior_input

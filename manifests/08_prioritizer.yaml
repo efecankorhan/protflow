@@ -1,0 +1,14 @@
+name: prioritizer
+version: "1.0.0"
+description: Multi-objective candidate prioritization combining quality, pocket, expression, and novelty
+inputs:
+  quality_table: Table
+  pockets: Pocket
+  sasa_table: Table
+  foldseek_table: Table
+outputs:
+  priority_table: Table
+execution:
+  type: local
+  command: "python -c \"pass\""
+adapter: protflow.adapters.prioritizer:parse_prioritization

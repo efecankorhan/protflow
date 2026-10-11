@@ -1,0 +1,16 @@
+{
+  "id": "pseudomonas_putida",
+  "name": "Pseudomonas putida KT2440",
+  "species": "Pseudomonas putida",
+  "gc_content": 61.5,
+  "start_codons": ["ATG", "GTG"],
+  "stop_codons": ["TGA", "TAA", "TAG"],
+  "description": "Yüksek GC oranlı metabolik şasi bakteri, zorlu organik çözücülere ve oksidatif strese dayanıklı.",
+  "genome_dna": "ATGACCAGCCGCCGCGTGCTGCTGCTCGGCGGCGGCGTCATCGGCGCGGCGCTGGCCGAGGCCCTGGCCGCCCGCGGCGTGGAGGTCACCGTGGTGAGCCGCCGCGACCCCGCCGCCCAGTGA",
+  "codon_usage": {
+    "A": {"GCC": 0.44, "GCG": 0.35, "GCA": 0.12, "GCT": 0.09},
+    "L": {"CTG": 0.62, "CTC": 0.16, "CTT": 0.06, "TTA": 0.03, "CTA": 0.02},
+    "E": {"GAG": 0.72, "GAA": 0.28},
+    "R": {"CGC": 0.46, "CGG": 0.25, "CGT": 0.15, "CGA": 0.08, "AGG": 0.04, "AGA": 0.02}
+  }
+}

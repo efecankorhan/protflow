@@ -1,0 +1,16 @@
+{
+  "id": "thermus_thermophilus",
+  "name": "Thermus thermophilus HB8",
+  "species": "Thermus thermophilus",
+  "gc_content": 69.5,
+  "start_codons": ["ATG", "GTG"],
+  "stop_codons": ["TAG", "TGA", "TAA"],
+  "description": "Ekstrem termofil bakteri (optimum 75°C), yüksek termostabil enzimler ve endüstriyel biyokatalizörler üretir.",
+  "genome_dna": "ATGCCCCGGGCCCTCGTGCTCTTCGACGTGGAGGGGGTGGGGCTGCGGGAGCGCCTCGCCCTGGCCCTCGAGCGGCTCCCGGAGCGGGAGCTCGTCGCCCCCGTGGTGGTCCTCTAG",
+  "codon_usage": {
+    "A": {"GCC": 0.52, "GCG": 0.38, "GCT": 0.06, "GCA": 0.04},
+    "L": {"CTC": 0.48, "CTG": 0.38, "CTT": 0.08, "CTA": 0.03, "TTG": 0.02, "TTA": 0.01},
+    "E": {"GAG": 0.88, "GAA": 0.12},
+    "P": {"CCC": 0.54, "CCG": 0.36, "CCT": 0.06, "CCA": 0.04}
+  }
+}

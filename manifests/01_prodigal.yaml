@@ -1,0 +1,13 @@
+name: prodigal
+version: "2.6.3"
+description: Gene finding (pyrodigal) - every candidate CDS on both strands, with coordinates, partial flag, start codon, RBS, score, protein and CDS nucleotides
+inputs:
+  genome: Sequence
+outputs:
+  proteins: SequenceCollection
+  genes: Table
+  annotations: Annotation
+execution:
+  type: local
+  command: "python -c \"pass\""
+adapter: protflow.adapters.genomics:parse_or_predict_genes

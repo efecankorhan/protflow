@@ -1,0 +1,12 @@
+name: foldseek
+version: "8.ef4e960"
+description: Fast structural alignment against reference database to assess homology and novelty
+inputs:
+  structure: Structure
+outputs:
+  alignment: Alignment
+  foldseek_table: Table
+execution:
+  type: local
+  command: "foldseek easy-search {inputs.structure.file_path}"
+adapter: protflow.adapters.foldseek:parse_foldseek

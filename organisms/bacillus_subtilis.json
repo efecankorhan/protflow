@@ -1,0 +1,16 @@
+{
+  "id": "bacillus_subtilis",
+  "name": "Bacillus subtilis 168",
+  "species": "Bacillus subtilis",
+  "gc_content": 43.5,
+  "start_codons": ["ATG", "TTG", "GTG"],
+  "stop_codons": ["TAA", "TAG", "TGA"],
+  "description": "Gram-pozitif endospor bakterisi, yüksek salgılama (sekresyon) kapasiteli endüstriyel konakçı.",
+  "genome_dna": "ATGAAAAAGAAACTGTTTTTAACATTACTTATTTTCGCTTTTTTAATTAGTGCACCAATTTATGCAAGTGAGAAAAAAGAAGTGCTGATTTTAGATGATGGTGATTTTAAAGCATAA",
+  "codon_usage": {
+    "A": {"GCT": 0.53, "GCC": 0.25, "GCA": 0.20, "GCG": 0.02},
+    "L": {"TTG": 0.29, "TTA": 0.28, "CTA": 0.14, "CTG": 0.11, "CTT": 0.10, "CTC": 0.08},
+    "E": {"GAA": 0.71, "GAG": 0.29},
+    "K": {"AAG": 0.58, "AAA": 0.42}
+  }
+}

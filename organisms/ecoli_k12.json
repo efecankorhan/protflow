@@ -1,0 +1,16 @@
+{
+  "id": "ecoli_k12",
+  "name": "Escherichia coli K-12 (MG1655)",
+  "species": "Escherichia coli",
+  "gc_content": 50.8,
+  "start_codons": ["ATG", "GTG", "TTG"],
+  "stop_codons": ["TAA", "TGA", "TAG"],
+  "description": "Gram-negatif model bakteri, standart ekspresyon ve klonlama şasisi.",
+  "genome_dna": "ATGGCTGGGCTGGTGGCCATCCTGGAGAAATTCGGCGACGAGCTGCGTTGGGCGCCGAAAACCTGCCACTATGGCGCGGTGATCCTGTCCTAAGGAGGATGGCCATGAAACTGACCCCGGTAGCCCTGCTGCTGGCGTTTGCGCTGCCGACCCATGCGGCTGAGCTGTAA",
+  "codon_usage": {
+    "A": {"GCG": 0.36, "GCC": 0.26, "GCA": 0.21, "GCT": 0.17},
+    "L": {"CTG": 0.50, "TTA": 0.14, "TTG": 0.13, "CTC": 0.10, "CTT": 0.10, "CTA": 0.04},
+    "E": {"GAA": 0.68, "GAG": 0.32},
+    "K": {"AAA": 0.74, "AAG": 0.26}
+  }
+}

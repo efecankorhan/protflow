@@ -1,0 +1,15 @@
+name: codon_optimizer
+version: "1.0.0"
+description: Host codon optimization engine maximizing CAI and eliminating cryptic splice sites, Shine-Dalgarno pauses and restriction sites
+inputs:
+  protein: Sequence
+outputs:
+  optimized_cds: Sequence
+  codon_table: Table
+parameters:
+  host: ecoli
+  forbidden_motifs: []
+execution:
+  type: local
+  command: "python -c \"pass\""
+adapter: protflow.adapters.codon:parse_codon_optimization

@@ -1,0 +1,13 @@
+name: protein_select
+version: "1.0.0"
+description: Pick one candidate protein by id from a gene set (parameter protein_id)
+inputs:
+  proteins: SequenceCollection
+outputs:
+  protein: Sequence
+parameters:
+  protein_id: ""
+execution:
+  type: local
+  command: "python -c \"pass\""
+adapter: protflow.adapters.genomics:parse_protein_select

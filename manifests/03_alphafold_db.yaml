@@ -1,0 +1,14 @@
+name: alphafold_db
+version: "4.0.0"
+description: Fetches predicted 3D structure and per-residue pLDDT metrics from AlphaFold DB
+is_remote: true
+inputs:
+  protein: Sequence
+outputs:
+  structure: Structure
+  residue_scores: ResidueScore
+execution:
+  type: http
+  url: "https://alphafold.ebi.ac.uk/api/prediction/{inputs.protein.protein_id}"
+  method: GET
+adapter: protflow.adapters.structure_fetch:parse_alphafold_fetcher

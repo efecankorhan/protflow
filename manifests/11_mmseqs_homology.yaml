@@ -1,0 +1,16 @@
+name: mmseqs_homology
+version: "18"
+description: Homology search of the whole candidate set with MMseqs2 (default target Swiss-Prot); one row per hit
+inputs:
+  proteins: SequenceCollection
+outputs:
+  homology: Table
+parameters:
+  target_fasta: swissprot
+  evalue: 0.001
+  max_hits: 5
+  sensitivity: 5.7
+execution:
+  type: local
+  command: "python -c \"pass\""
+adapter: protflow.adapters.homology:parse_mmseqs_homology

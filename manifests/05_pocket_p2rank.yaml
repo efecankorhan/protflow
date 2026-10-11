@@ -1,0 +1,12 @@
+name: p2rank
+version: "2.4.1"
+description: Pocket and ligand-binding site prediction using P2Rank
+inputs:
+  structure: Structure
+outputs:
+  pockets: Pocket
+execution:
+  type: container
+  image: "czbiohub/p2rank:2.4.1"
+  command: "p2rank predict -f {inputs.structure.file_path}"
+adapter: protflow.adapters.pockets:parse_p2rank

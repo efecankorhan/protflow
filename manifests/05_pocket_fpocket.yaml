@@ -1,0 +1,11 @@
+name: fpocket
+version: "4.0.0"
+description: Voronoi tessellation based pocket detection
+inputs:
+  structure: Structure
+outputs:
+  pockets: Pocket
+execution:
+  type: local
+  command: "fpocket -f {inputs.structure.file_path}"
+adapter: protflow.adapters.pockets:parse_fpocket

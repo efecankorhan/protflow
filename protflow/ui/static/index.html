@@ -1,0 +1,2672 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ProtFlow Studio | Modüler Biyoinformatik Pipeline Editörü</title>
+  <style>
+    :root {
+      --bg: #111215;
+      --panel-bg: #18191f;
+      --card-bg: #1f2129;
+      --card-header: #282b35;
+      --text: #e6e8ee;
+      --text-muted: #8b8f9e;
+      --border: #313542;
+      --border-focus: #5d637a;
+      --accent: #6c5ce7;
+      --accent-hover: #5849df;
+      --accent-glow: rgba(108, 92, 231, 0.4);
+      --danger: #ff4757;
+      --success: #2ed573;
+      --warning: #ffa502;
+      --info: #70a1ff;
+
+      /* Type System Colors */
+      --color-Sequence: #00f2fe;
+      --color-Structure: #ff9f43;
+      --color-ResidueScore: #feca57;
+      --color-Pocket: #a55eea;
+      --color-Table: #1dd1a1;
+      --color-Annotation: #ff6b6b;
+      --color-Alignment: #54a0ff;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow: hidden;
+      user-select: none;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top App Bar */
+    header {
+      height: 52px;
+      background: #15161c;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 100;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+    }
+    .brand-badge {
+      background: linear-gradient(135deg, #6c5ce7, #a55eea);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 7px;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    button {
+      background: #252833;
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+    button:hover { background: #323646; border-color: var(--border-focus); }
+    button.primary {
+      background: linear-gradient(135deg, #6c5ce7, #5345c7);
+      border-color: #6c5ce7;
+      color: #fff;
+      box-shadow: 0 0 10px var(--accent-glow);
+    }
+    button.primary:hover { background: #5849df; }
+    button.success { background: #10ac84; border-color: #1dd1a1; color:#fff; }
+    button.danger { background: rgba(255, 71, 87, 0.2); border-color: var(--danger); color: #ff6b81; }
+    button.danger:hover { background: var(--danger); color: #fff; }
+
+    /* Workspace Layout */
+    #main-container {
+      flex: 1;
+      display: flex;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Left Drawer: Tool Library */
+    #sidebar-left {
+      width: 290px;
+      background: var(--panel-bg);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      z-index: 50;
+    }
+    .sidebar-header {
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .search-box {
+      width: 100%;
+      background: #111216;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 7px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      outline: none;
+    }
+    .search-box:focus { border-color: var(--accent); }
+    .library-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+    }
+    .category-group {
+      margin-bottom: 14px;
+    }
+    .category-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin: 6px 4px;
+    }
+    .tool-item {
+      background: #20222a;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 10px;
+      margin-bottom: 6px;
+      cursor: grab;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.15s ease;
+    }
+    .tool-item:hover {
+      background: #282b36;
+      border-color: #484d5f;
+      transform: translateX(2px);
+    }
+    .tool-name { font-size: 12px; font-weight: 600; }
+    .tool-meta { font-size: 10px; color: var(--text-muted); }
+
+    /* Center Canvas Viewport */
+    #canvas-container {
+      flex: 1;
+      position: relative;
+      background-color: var(--bg);
+      background-image: 
+        radial-gradient(#272b38 1px, transparent 1px),
+        radial-gradient(#272b38 1px, #111215 1px);
+      background-size: 26px 26px;
+      background-position: 0 0, 13px 13px;
+      overflow: hidden;
+      cursor: grab;
+    }
+    #canvas-container:active { cursor: grabbing; }
+
+    #viewport-pan {
+      position: absolute;
+      top: 0; left: 0;
+      width: 0; height: 0;
+      transform-origin: 0 0;
+      pointer-events: none;
+      overflow: visible !important;
+    }
+    #svg-connections {
+      position: absolute;
+      top: 0; left: 0;
+      width: 1px; height: 1px;
+      overflow: visible !important;
+      pointer-events: none;
+      z-index: 5;
+    }
+    #nodes-container, #groups-container {
+      position: absolute;
+      top: 0; left: 0;
+      overflow: visible !important;
+      pointer-events: none;
+    }
+    .wire-group {
+      cursor: pointer;
+    }
+    path.wire-hitbox {
+      fill: none;
+      stroke: transparent;
+      stroke-width: 24px;
+      stroke-linecap: round;
+      pointer-events: stroke;
+      cursor: pointer;
+    }
+    path.wire {
+      fill: none;
+      stroke-width: 3.5px;
+      stroke-linecap: round;
+      opacity: 0.9;
+      pointer-events: none;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+      transition: stroke-width 0.15s, opacity 0.15s, stroke 0.15s;
+    }
+    .wire-group:hover path.wire {
+      stroke-width: 5px;
+      opacity: 1;
+      filter: drop-shadow(0 0 6px var(--accent));
+    }
+    .wire-group.wire-selected path.wire {
+      stroke: #ff4757 !important;
+      stroke-width: 5px;
+      stroke-dasharray: 8 4;
+      animation: dash 1s linear infinite;
+      opacity: 1;
+      filter: drop-shadow(0 0 10px rgba(255, 71, 87, 0.8));
+    }
+    .wire-delete-badge {
+      cursor: pointer;
+      pointer-events: all;
+    }
+    .wire-delete-badge circle {
+      transition: r 0.15s ease, fill 0.15s ease;
+    }
+    .wire-delete-badge:hover circle {
+      r: 13;
+      fill: #ff2a3a;
+    }
+    path.wire-dragging {
+      stroke-dasharray: 6 4;
+      animation: dash 1s linear infinite;
+      pointer-events: none;
+    }
+    @keyframes dash { to { stroke-dashoffset: -20; } }
+
+    /* Floating Canvas Controls (Zoom / Pan / Fit / Delete) */
+    .canvas-controls {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      background: #191b22;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 6px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+      z-index: 60;
+    }
+    .canvas-controls button {
+      background: #252833;
+      padding: 5px 8px;
+      font-size: 11px;
+    }
+
+    /* Node Cards */
+    .node-card {
+      position: absolute;
+      width: 260px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+      z-index: 10;
+      cursor: move;
+      pointer-events: all;
+      transition: box-shadow 0.2s, border-color 0.2s;
+    }
+    .node-card.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 18px var(--accent-glow), 0 10px 30px rgba(0,0,0,0.8);
+    }
+    .node-header {
+      background: var(--card-header);
+      padding: 8px 10px;
+      border-top-left-radius: 7px;
+      border-top-right-radius: 7px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+    }
+    .node-title-box {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .node-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #fff;
+    }
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #747d8c;
+    }
+    .status-running {
+      background: #70a1ff;
+      animation: pulse 1s infinite alternate;
+    }
+    .status-completed { background: #2ed573; }
+    .status-cached { background: #ffa502; }
+    .status-error { background: #ff4757; }
+    @keyframes pulse { from { opacity: 0.4; } to { opacity: 1; } }
+
+    .node-badge {
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 5px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .badge-local { background: #2f3542; color: #70a1ff; }
+    .badge-container { background: #1e3799; color: #78e08f; }
+    .badge-http { background: #4834d4; color: #f9ca24; }
+    .badge-ssh { background: #eb4d4b; color: #fff; }
+    .badge-remote-warn {
+      background: rgba(255, 71, 87, 0.2);
+      color: #ff4757;
+      border: 1px solid #ff4757;
+      font-size: 9px;
+      margin-left: 2px;
+    }
+    .node-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .node-close-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 13px;
+      padding: 2px 5px;
+      border-radius: 4px;
+      cursor: pointer;
+      line-height: 1;
+    }
+    .node-close-btn:hover {
+      background: rgba(255, 71, 87, 0.2);
+      color: #ff4757;
+    }
+
+    /* Node Ports & Body */
+    .node-body {
+      padding: 10px;
+    }
+    .ports-container {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .ports-in, .ports-out {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex: 1;
+    }
+    .ports-out { align-items: flex-end; }
+    .port-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      cursor: crosshair;
+    }
+    .port-bullet {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      border: 2px solid #232731;
+      transition: transform 0.15s, border-color 0.15s;
+    }
+    .port-bullet:hover {
+      transform: scale(1.35);
+      border-color: #fff;
+    }
+
+    /* Node Preview */
+    .node-preview {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid #2b2e3a;
+      font-size: 11px;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .node-preview-data {
+      font-weight: 600;
+      color: var(--success);
+    }
+    .progress-bar-container {
+      height: 3px;
+      background: #252833;
+      border-radius: 2px;
+      margin-top: 6px;
+      overflow: hidden;
+      display: none;
+    }
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: var(--accent);
+      transition: width 0.3s;
+    }
+
+    /* Right Drawer: Node Inspector */
+    #sidebar-right {
+      width: 320px;
+      background: var(--panel-bg);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      z-index: 50;
+    }
+    .inspector-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .inspector-title { font-size: 14px; font-weight: 700; }
+    .inspector-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .field-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+    .field-input, .field-select, .field-textarea {
+      background: #111216;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 7px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      outline: none;
+    }
+    .field-input:focus, .field-select:focus, .field-textarea:focus {
+      border-color: var(--accent);
+    }
+    .field-textarea {
+      font-family: monospace;
+      min-height: 80px;
+      resize: vertical;
+    }
+    .remote-privacy-card {
+      background: rgba(255, 71, 87, 0.1);
+      border: 1px solid var(--danger);
+      border-radius: 6px;
+      padding: 10px;
+      font-size: 11px;
+      color: #ff6b81;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    /* Filter stats badge on node card */
+    .filter-stat-badge {
+      margin-top: 6px;
+      padding: 3px 6px;
+      background: rgba(0, 242, 254, 0.08);
+      border: 1px solid rgba(0, 242, 254, 0.35);
+      border-radius: 4px;
+      font-size: 10px;
+      color: #00f2fe;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .filter-stat-badge .drop-count {
+      color: #ff6b6b;
+      font-weight: 700;
+    }
+
+    /* Terminal logs & Inspector testing */
+    .terminal-box {
+      background: #0d0e12;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+    .terminal-head {
+      background: #191b22;
+      padding: 4px 8px;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+    }
+    .terminal-logs {
+      font-family: Consolas, monospace;
+      font-size: 11px;
+      line-height: 1.4;
+      padding: 8px;
+      color: #8be9fd;
+      max-height: 140px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+    .health-pill {
+      font-size: 8px;
+      font-weight: 800;
+      padding: 1px 4px;
+      border-radius: 3px;
+      background: rgba(46, 213, 115, 0.2);
+      color: #2ed573;
+      border: 1px solid rgba(46, 213, 115, 0.4);
+      margin-left: 2px;
+    }
+
+    /* Zoom LOD Compact mode (zoom < 0.60) */
+    .lod-compact .node-card {
+      width: 220px;
+    }
+    .lod-compact .port-item span:not(.port-bullet) {
+      display: none;
+    }
+    .lod-compact .node-preview,
+    .lod-compact .filter-stat-badge {
+      display: none;
+    }
+
+    /* Collapsed Group Frame */
+    .group-frame {
+      position: absolute;
+      border: 2px dashed #4b4f63;
+      border-radius: 12px;
+      background: rgba(30, 32, 40, 0.4);
+      z-index: 4;
+      pointer-events: all;
+    }
+    .group-header {
+      position: absolute;
+      top: -24px; left: 12px;
+      background: #252833;
+      padding: 2px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Modal Dialogs */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.75);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+    }
+    .modal-card {
+      background: #191b22;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      width: 820px;
+      max-width: 92vw;
+      max-height: 88vh;
+      overflow-y: auto;
+      padding: 24px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+    }
+    .modal-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .close-icon {
+      font-size: 22px;
+      color: var(--text-muted);
+      cursor: pointer;
+      background: none;
+      border: none;
+      padding: 0;
+    }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #252833;
+      border: 1px solid var(--border);
+      padding: 12px 18px;
+      border-radius: 8px;
+      font-size: 13px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+      display: none;
+      z-index: 300;
+      max-width: 420px;
+    }
+    #toast.toast-error { background: #b33939; border-color: #ff5252; color: #fff; }
+    #toast.toast-success { background: #218c74; border-color: #33d9b2; color: #fff; }
+    #toast.toast-warn { background: #cd6133; border-color: #ff793f; color: #fff; }
+
+    /* Tables */
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+    th, td { border: 1px solid var(--border); padding: 8px 10px; text-align: left; }
+    th { background: #222530; color: var(--text-muted); font-weight: 600; }
+    tr:nth-child(even) { background: #16171d; }
+  </style>
+</head>
+<body>
+
+  <!-- Top Header Navigation -->
+  <header>
+    <div class="brand">
+      <span>ProtFlow</span>
+      <span class="brand-badge">Pipeline Studio</span>
+    </div>
+    <div class="top-actions">
+      <button onclick="openPriorInputModal()" style="border-color:#6c5ce7; color:#a29bfe; font-weight:600;">Girdi Hazırla (Genom)</button>
+      <button onclick="autoLayoutDAG()">Otomatik Düzenle</button>
+      <button onclick="exportPipelineJSON()">Hattı Kaydet</button>
+      <button onclick="document.getElementById('import-file-input').click()">Hat Yükle</button>
+      <input type="file" id="import-file-input" style="display:none" onchange="importPipelineJSON(event)" accept=".json,.yaml">
+      <button onclick="openBenchmarkModal()">Kıyaslama & Grafik</button>
+      <button onclick="openWetLabModal()">Islak Lab / Alanin</button>
+      <button onclick="openPipelineOutputsModal()" style="border-color:#2ed573; color:#2ed573; font-weight:600;">Hattın Çıktıları</button>
+      <button class="primary" onclick="runPipelineStudio()">Hattı Çalıştır</button>
+    </div>
+  </header>
+
+  <!-- Workspace Container -->
+  <div id="main-container">
+    
+    <!-- Left Drawer: Tool Library -->
+    <aside id="sidebar-left">
+      <div class="sidebar-header">
+        <input type="text" id="tool-search" class="search-box" placeholder="Araç ara (P2Rank, Foldseek...)" oninput="filterTools()">
+      </div>
+      <div class="library-list" id="tool-categories"></div>
+      <div style="padding:12px; border-top:1px solid var(--border);">
+        <button style="width:100%; justify-content:center;" onclick="openNewCustomNodeModal()">+ Özel Düğüm Ekle</button>
+      </div>
+    </aside>
+
+    <!-- Center Canvas (Pan & Zoom Infinite Workspace) -->
+    <main id="canvas-container">
+      <div id="viewport-pan">
+        <svg id="svg-connections">
+          <path id="temp-wire" class="wire wire-dragging" d="" style="display:none;"></path>
+        </svg>
+        <div id="groups-container"></div>
+        <div id="nodes-container"></div>
+      </div>
+
+      <!-- Floating Canvas Controls -->
+      <div class="canvas-controls">
+        <button title="Yakınlaştır (Zoom In)" onclick="zoomIn()">+</button>
+        <button id="zoom-level-text" title="Sıfırla (100%)" onclick="resetZoomPan()">100%</button>
+        <button title="Uzaklaştır (Zoom Out)" onclick="zoomOut()">-</button>
+        <button title="Görünümü Düğümlere Sığdır" onclick="fitView()">Sığdır</button>
+        <button title="Seçili Düğümü veya Bağlantıyı Sil (Del)" onclick="deleteSelected()" style="color:#ff4757;">Sil</button>
+      </div>
+    </main>
+
+    <!-- Right Drawer: Node Inspector -->
+    <aside id="sidebar-right">
+      <div class="inspector-header">
+        <span class="inspector-title">Düğüm Denetimi</span>
+        <span id="inspector-node-id" style="font-size:11px; color:var(--text-muted);">Seçim yok</span>
+      </div>
+      <div class="inspector-content" id="inspector-body">
+        <p style="color:var(--text-muted); font-size:12px; text-align:center; margin-top:40px;">
+          Düzenlemek veya silmek için canvas üzerindeki herhangi bir düğüme veya bağlantıya tıklayın.
+        </p>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Privacy Consent Modal -->
+  <div id="privacy-modal" class="modal-overlay">
+    <div class="modal-card" style="width:480px;">
+      <div class="modal-head">
+        <h3 style="color:#ff4757;">Dış Ağ Gizlilik Uyarısı</h3>
+        <button class="close-icon" onclick="closeModal('privacy-modal')">&times;</button>
+      </div>
+      <p style="font-size:13px; line-height:1.5; color:var(--text);">
+        Seçilen düğüm (<b id="privacy-tool-name"></b>) harici bir web servisine veya GPU sunucusuna yönlendirilmiştir.
+      </p>
+      <div style="background:#111216; border:1px solid var(--border); padding:10px; border-radius:6px; margin:12px 0; font-size:12px;">
+        Endpoint: <code id="privacy-tool-url" style="color:#f9ca24;"></code>
+      </div>
+      <p style="font-size:12px; color:var(--text-muted); margin-bottom:16px;">
+        Yayımlanmamış sekans verilerinin dış ağa gönderilmesini onaylıyor musunuz?
+      </p>
+      <div style="display:flex; justify-content:flex-end; gap:10px;">
+        <button onclick="closeModal('privacy-modal')">İptal Et</button>
+        <button class="primary" style="background:#ff4757; border-color:#ff4757;" onclick="confirmPrivacyConsent()">Onay Ver ve İlerle</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Prior Input / Genome Source Modal -->
+  <div id="prior-input-modal" class="modal-overlay">
+    <div class="modal-card" style="width:700px;">
+      <div class="modal-head">
+        <h3 class="modal-title">Girdi Hazırla & Konakçı Genom Kaynağı (prior_input)</h3>
+        <button class="close-icon" onclick="closeModal('prior-input-modal')">&times;</button>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <p style="font-size:12px; color:var(--text-muted); line-height:1.5; margin:0;">
+          Dizayn hattı bu genom sekansı ve konakçı organizmanın kodon kullanım tablosu ile başlar.
+          Aşağıdan NCBI veritabanından çekebilir, model bir bakteri seçebilir veya kendi DNA dizinizi girebilirsiniz.
+        </p>
+
+        <!-- NCBI Search Box -->
+        <div class="field-group" style="background:#151821; padding:12px; border-radius:6px; border:1px solid #3d4457;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <label class="field-label" style="color:#00f2fe; font-weight:700; margin:0;">NCBI Genom Veritabanından Çek:</label>
+            <span style="font-size:10px; color:var(--text-muted);">E-utilities & Assembly Destekli</span>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <input type="text" id="ncbi-query-input" class="field-input" placeholder="Bakteri adı veya Accession (örn: Bacillus subtilis, SARS coronavirus Tor2, GCF_000864885.1)" style="flex:1;" onkeydown="if(event.key==='Enter') fetchFromNCBI()">
+            <button id="btn-ncbi-fetch" onclick="fetchFromNCBI()" style="white-space:nowrap; border-color:#00f2fe; color:#00f2fe; font-weight:600;">NCBI'dan Çek</button>
+          </div>
+          <div id="ncbi-fetch-status" style="font-size:11px; color:var(--text-muted); margin-top:6px;">
+            NCBI'dan kromozom/assembly FASTA dizisi çekilir, %GC içeriği ve uzunluk otomatik hesaplanır.
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">1. Yerel / Hazır Organizma Profili:</label>
+          <select id="modal-organism-select" class="field-select" onchange="onOrganismSelectChanged(this.value)">
+            <!-- Populated dynamically via /api/organisms -->
+          </select>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; background:#111216; padding:10px; border-radius:6px; border:1px solid var(--border); font-size:12px;">
+          <div>
+            <span style="color:var(--text-muted);">Sekans Uzunluğu:</span>
+            <div id="stat-seq-len" style="font-weight:700; color:#00f2fe; margin-top:2px;">- bp</div>
+          </div>
+          <div>
+            <span style="color:var(--text-muted);">GC İçeriği:</span>
+            <div id="stat-seq-gc" style="font-weight:700; color:#2ed573; margin-top:2px;">-%</div>
+          </div>
+          <div>
+            <span style="color:var(--text-muted);">Kodon Tablosu:</span>
+            <div id="stat-codon-count" style="font-weight:700; color:#feca57; margin-top:2px;">64 kodon</div>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <label class="field-label" style="margin-bottom:0;">2. Genom DNA Dizisi (FASTA / Düz Dizi):</label>
+            <span id="stat-valid-orf" style="font-size:11px; color:#2ed573; font-weight:600;">Başlangıç/Bitiş Kodonu Doğrulandı (ATG...TAA)</span>
+          </div>
+          <textarea id="modal-genome-seq" style="width:100%; height:120px; background:#111216; color:#a4b0be; border:1px solid var(--border); border-radius:6px; font-family:monospace; padding:10px; font-size:11px; word-break:break-all;" oninput="onGenomeSeqInputChanged()"></textarea>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px;">
+          <span style="font-size:11px; color:var(--text-muted);">prior_input kök düğümü doğrudan gene_prediction düğümüne bağlanır.</span>
+          <div style="display:flex; gap:10px;">
+            <button onclick="closeModal('prior-input-modal')">Kapat</button>
+            <button class="primary" onclick="applyPriorInputModal()">Hatta Aktar ve Bağla</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Generic Output Viewer Modal -->
+  <div id="output-viewer-modal" class="modal-overlay">
+    <div class="modal-card" style="width:840px; max-height:85vh; display:flex; flex-direction:column;">
+      <div class="modal-head">
+        <div>
+          <h3 class="modal-title" id="out-modal-title">Çıktı Görüntüleyici</h3>
+          <span id="out-modal-subtitle" style="font-size:11px; color:var(--text-muted);"></span>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center;">
+          <button id="out-modal-dl-btn" style="border-color:#2ed573; color:#2ed573; font-size:11px;">İndir</button>
+          <button class="close-icon" onclick="closeModal('output-viewer-modal')">&times;</button>
+        </div>
+      </div>
+      <div id="out-modal-content" style="flex:1; overflow:auto; margin-top:10px;"></div>
+    </div>
+  </div>
+
+  <!-- Pipeline Outputs Hub Modal -->
+  <div id="pipeline-outputs-modal" class="modal-overlay">
+    <div class="modal-card" style="width:900px; max-height:85vh; display:flex; flex-direction:column;">
+      <div class="modal-head">
+        <div>
+          <h3 class="modal-title">Hattın Modüler Çıktıları</h3>
+          <span style="font-size:11px; color:var(--text-muted);">Her düğümün ürettiği ham ve nihai sonuçları bağımsız inceleyin ve indirin</span>
+        </div>
+        <button class="close-icon" onclick="closeModal('pipeline-outputs-modal')">&times;</button>
+      </div>
+      <div id="pipeline-outputs-body" style="flex:1; overflow:auto; margin-top:12px;">
+        <p style="color:var(--text-muted); font-size:12px;">Henüz bir hat çalıştırılmadı.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Node Modal -->
+  <div id="custom-node-modal" class="modal-overlay">
+    <div class="modal-card" style="width:680px;">
+      <div class="modal-head">
+        <h3 class="modal-title">Özel Düğüm Ekle (Yeni Manifest)</h3>
+        <button class="close-icon" onclick="closeModal('custom-node-modal')">&times;</button>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <label style="font-size:12px; color:var(--text-muted);">Düğüm Manifesti (YAML Sözleşmesi):</label>
+        <textarea id="node-yaml-editor" style="width:100%; height:260px; background:#111216; color:#a4b0be; border:1px solid var(--border); border-radius:6px; font-family:monospace; padding:12px; font-size:12px;"></textarea>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+          <button onclick="testManifestInModal()">Örnek Girdiyle Test Et</button>
+          <div style="display:flex; gap:10px;">
+            <button onclick="closeModal('custom-node-modal')">İptal</button>
+            <button class="primary" onclick="saveManifestFromModal()">Kaydet</button>
+          </div>
+        </div>
+        <div id="test-output-box" style="margin-top:10px; font-size:12px; padding:10px; border-radius:6px; display:none;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Benchmark & Calibration Modal -->
+  <div id="benchmark-modal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3>Hat Varyantları Kıyaslama & Kalibrasyon Grafiği</h3>
+        <button class="close-icon" onclick="closeModal('benchmark-modal')">&times;</button>
+      </div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+        <div>
+          <h4 style="font-size:13px; margin-bottom:8px;">Pareto Karşılaştırma Tablosu</h4>
+          <div id="benchmark-table-box">Yükleniyor...</div>
+        </div>
+        <div>
+          <h4 style="font-size:13px; margin-bottom:8px;">Varyant Skor Dağılımı (F1 & Precision)</h4>
+          <svg id="benchmark-chart" width="360" height="240" style="background:#111216; border:1px solid var(--border); border-radius:8px;"></svg>
+        </div>
+      </div>
+      <div style="margin-top:20px;">
+        <h4 style="font-size:13px; margin-bottom:8px;">Ampirik Kalibrasyon Matrisi</h4>
+        <div id="calibration-table-box"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Wet Lab Modal -->
+  <div id="wetlab-modal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3>Islak Lab Doğrulama Paneli (Alanin Taraması)</h3>
+        <button class="close-icon" onclick="closeModal('wetlab-modal')">&times;</button>
+      </div>
+      <p style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">
+        En yüksek skorlu aday enzimlerin aktif cebindeki kritik amino asitler ve laboratuvar mutasyon kodları:
+      </p>
+      <div id="wetlab-table-box">Henüz hat çalıştırılmadı.</div>
+    </div>
+  </div>
+
+  <!-- Results Modal -->
+  <div id="results-modal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3>Hattın Aday Öncelik Sonuçları</h3>
+        <button class="close-icon" onclick="closeModal('results-modal')">&times;</button>
+      </div>
+      <div id="results-table-box"></div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script>
+    const TYPE_COLORS = {
+      'Sequence': '#00f2fe',
+      'Structure': '#ff9f43',
+      'ResidueScore': '#feca57',
+      'Pocket': '#a55eea',
+      'Table': '#1dd1a1',
+      'Annotation': '#ff6b6b',
+      'Alignment': '#54a0ff'
+    };
+
+    let allManifests = [];
+    let currentPipeline = { name: "bacterial_pipeline", steps: [] };
+    let activeNodes = [];
+    let connections = [];
+    let selectedNodeId = null;
+    let selectedConnectionIdx = null;
+    let privacyConsentGiven = false;
+    let currentExecutionOutputs = {};
+
+    // Organism profiles & prior input state
+    let availableOrganisms = [];
+    let activeOrganismId = 'ecoli_k12';
+    let activeGenomeDna = 'ATGGCTGGGCTGGTGGCCATCCTGGAGAAATTCGGCGACGAGCTGCGTTGGGCGCCGAAAACCTGCCACTATGGCGCGGTGATCCTGTCCTAA';
+
+    // Pan & Zoom Infinite Canvas state
+    let panX = 60;
+    let panY = 60;
+    let zoom = 1.0;
+    const MIN_ZOOM = 0.25;
+    const MAX_ZOOM = 2.5;
+    let isPanning = false;
+    let panStartX = 0;
+    let panStartY = 0;
+
+    // Wire Drag State
+    let isDraggingWire = false;
+    let wireStartPort = null;
+
+    async function init() {
+      await loadManifests();
+      await loadOrganisms();
+      await loadPipeline();
+      setupPanZoom();
+      setupKeyboardShortcuts();
+      renderCanvas();
+    }
+
+    async function loadOrganisms() {
+      try {
+        const res = await fetch('/api/organisms');
+        const data = await res.json();
+        availableOrganisms = data.organisms || [];
+        populateOrganismDropdown();
+      } catch (e) {
+        console.warn("Organisms could not be loaded:", e);
+      }
+    }
+
+    function populateOrganismDropdown() {
+      const select = document.getElementById('modal-organism-select');
+      if (!select) return;
+      select.innerHTML = '';
+      availableOrganisms.forEach(org => {
+        const opt = document.createElement('option');
+        opt.value = org.id;
+        opt.textContent = `${org.name} (%${org.gc_content} GC)`;
+        if (org.id === activeOrganismId) opt.selected = true;
+        select.appendChild(opt);
+      });
+      const customOpt = document.createElement('option');
+      customOpt.value = 'custom';
+      customOpt.textContent = 'Özel / Kullanıcı DNA Dizisi';
+      if (activeOrganismId === 'custom') customOpt.selected = true;
+      select.appendChild(customOpt);
+
+      updateOrganismModalFields(activeOrganismId);
+    }
+
+    function onOrganismSelectChanged(orgId) {
+      activeOrganismId = orgId;
+      const org = availableOrganisms.find(o => o.id === orgId);
+      if (org && org.genome_dna) {
+        activeGenomeDna = org.genome_dna;
+      }
+      updateOrganismModalFields(orgId);
+    }
+
+    function updateOrganismModalFields(orgId) {
+      const ta = document.getElementById('modal-genome-seq');
+      if (ta) ta.value = activeGenomeDna;
+      recalculateSeqStats();
+    }
+
+    function onGenomeSeqInputChanged() {
+      const ta = document.getElementById('modal-genome-seq');
+      if (ta) {
+        activeGenomeDna = ta.value.trim().replace(/\s+/g, '').toUpperCase();
+        recalculateSeqStats();
+      }
+    }
+
+    function recalculateSeqStats() {
+      const cleanSeq = activeGenomeDna.replace(/[^A-Za-z]/g, '').toUpperCase();
+      const len = cleanSeq.length;
+      const lenEl = document.getElementById('stat-seq-len');
+      const gcEl = document.getElementById('stat-seq-gc');
+      const orfEl = document.getElementById('stat-valid-orf');
+      if (lenEl) lenEl.innerText = `${len} bp (${Math.floor(len/3)} kodon)`;
+      if (gcEl) {
+        if (len > 0) {
+          const gcMatches = cleanSeq.match(/[GCgc]/g) || [];
+          const gc = Math.round((gcMatches.length / len) * 100);
+          gcEl.innerText = `%${gc}`;
+        } else {
+          gcEl.innerText = `-%`;
+        }
+      }
+      if (orfEl) {
+        if (cleanSeq.startsWith('ATG') && (cleanSeq.endsWith('TAA') || cleanSeq.endsWith('TAG') || cleanSeq.endsWith('TGA'))) {
+          orfEl.innerText = "Doğrulanmış Bütüncül ORF (ATG...Stop)";
+          orfEl.style.color = '#2ed573';
+        } else {
+          orfEl.innerText = "Özel Dizi (Prodigal gen tahmini ile ORF taranacak)";
+          orfEl.style.color = '#feca57';
+        }
+      }
+    }
+
+    function openPriorInputModal() {
+      openModal('prior-input-modal');
+      populateOrganismDropdown();
+    }
+
+    function applyPriorInputModal() {
+      onGenomeSeqInputChanged();
+      let pNode = activeNodes.find(n => n.name.toLowerCase().includes('prior_input') || (n.manifestFile && n.manifestFile.includes('00_prior_input')));
+      if (!pNode) {
+        addNodeToCanvas('00_prior_input.yaml');
+        pNode = activeNodes.find(n => n.name.toLowerCase().includes('prior_input') || (n.manifestFile && n.manifestFile.includes('00_prior_input')));
+      }
+      if (pNode) {
+        pNode.parameters = pNode.parameters || {};
+        pNode.parameters.organism = activeOrganismId;
+        pNode.parameters.genome_dna = activeGenomeDna;
+        const gcText = document.getElementById('stat-seq-gc') ? document.getElementById('stat-seq-gc').innerText : '';
+        pNode.preview = `Genom: ${activeGenomeDna.length} bp (${gcText})`;
+        selectNode(pNode.id);
+      }
+      closeModal('prior-input-modal');
+      renderCanvas();
+      showToast(`Genom girdisi aktarıldı: ${activeGenomeDna.length} bp (${activeOrganismId})`, "toast-success");
+    }
+
+    async function fetchFromNCBI() {
+      const qInput = document.getElementById('ncbi-query-input');
+      const query = qInput ? qInput.value.trim() : '';
+      if (!query) {
+        showToast("Lütfen bir bakteri adı veya accession girin.", "toast-warn");
+        return;
+      }
+      const statusEl = document.getElementById('ncbi-fetch-status');
+      const btn = document.getElementById('btn-ncbi-fetch');
+      if (statusEl) statusEl.innerHTML = `<span style="color:#00f2fe;">NCBI üzerinden çekiliyor (${query})...</span>`;
+      if (btn) btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/ncbi/fetch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: query })
+        });
+        const data = await res.json();
+        if (data.status === 'SUCCESS' && data.result) {
+          const r = data.result;
+          activeGenomeDna = r.sequence;
+          activeOrganismId = r.organism || query;
+          const ta = document.getElementById('modal-genome-seq');
+          if (ta) ta.value = activeGenomeDna;
+          recalculateSeqStats();
+          if (statusEl) {
+            statusEl.innerHTML = `<span style="color:#2ed573; font-weight:600;">Başarılı: ${r.organism} (${r.length} bp, %${r.gc_content} GC)</span>`;
+          }
+          showToast(`NCBI'dan çekildi: ${r.organism} (${r.length} bp)`, "toast-success");
+        } else {
+          if (statusEl) statusEl.innerHTML = `<span style="color:#ff4757;">Hata: ${data.error || 'Bulunamadı'}</span>`;
+          showToast(data.error || "NCBI kaydı bulunamadı.", "toast-error");
+        }
+      } catch (err) {
+        if (statusEl) statusEl.innerHTML = `<span style="color:#ff4757;">Bağlantı hatası: ${err.message}</span>`;
+        showToast(`NCBI Hatası: ${err.message}`, "toast-error");
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    function inspectNodeOutput(nodeId, outKey) {
+      const nOutputs = (currentExecutionOutputs && currentExecutionOutputs[nodeId]) || {};
+      const outData = nOutputs[outKey];
+      if (!outData) return;
+
+      document.getElementById('out-modal-title').innerText = `${nodeId} → ${outKey} (${outData.type})`;
+      const dlBtn = document.getElementById('out-modal-dl-btn');
+      dlBtn.onclick = () => downloadNodeOutput(nodeId, outKey);
+
+      const contentBox = document.getElementById('out-modal-content');
+      if (outData.type === 'Sequence') {
+        document.getElementById('out-modal-subtitle').innerText = `${outData.length} bp/aa | Protein ID: ${outData.protein_id || '-'}`;
+        contentBox.innerHTML = `
+          <div style="background:#111216; padding:12px; border-radius:6px; border:1px solid var(--border); font-family:monospace; font-size:11px; line-height:1.6; word-break:break-all; max-height:420px; overflow:auto;">
+            <div style="color:#00f2fe; margin-bottom:8px;">>${outData.protein_id} ${outData.description || ''}</div>
+            <div style="color:#e6e8ee;">${outData.sequence}</div>
+          </div>
+        `;
+      } else if (outData.records && outData.records.length > 0) {
+        document.getElementById('out-modal-subtitle').innerText = `${outData.row_count || outData.records.length} kayıt`;
+        const cols = outData.columns || Object.keys(outData.records[0]);
+        let tHtml = '';
+        if (outData.pymol_pml) {
+          tHtml += `
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; background:#111216; padding:8px 12px; border-radius:6px; border:1px solid var(--border);">
+              <span style="font-size:11px; color:#00f2fe; font-weight:600;">[OK] P2Rank PyMOL görselleştirme betiği (.pml) hazır</span>
+              <button class="primary" style="padding:4px 10px; font-size:11px;" onclick="downloadPymolScript('${nodeId}', '${outKey}')">PyMOL Betiği (.pml) İndir</button>
+            </div>
+          `;
+        }
+        tHtml += `<table><tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr>`;
+        outData.records.slice(0, 100).forEach(r => {
+          tHtml += `<tr>${cols.map(c => `<td>${r[c] !== undefined ? r[c] : ''}</td>`).join('')}</tr>`;
+        });
+        tHtml += `</table>`;
+        contentBox.innerHTML = tHtml;
+      } else if (outData.pdb) {
+        const ext = (outData.format || 'pdb').toLowerCase();
+        document.getElementById('out-modal-subtitle').innerText = `3B Koordinat Yapısı (${ext.toUpperCase()}) | PyMOL ile Açılabilir`;
+        const lines = outData.pdb.split('\n');
+        const previewLines = lines.slice(0, 100).join('\n');
+        contentBox.innerHTML = `
+          <div style="background:#111216; padding:12px; border-radius:6px; border:1px solid var(--border);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <span style="font-size:11px; color:#2ed573; font-weight:600;">[OK] 3B Yapı dosyası hazır (${lines.length} satır)</span>
+              <button class="primary" style="padding:4px 10px; font-size:11px;" onclick="downloadNodeOutput('${nodeId}', '${outKey}')">PyMOL için .${ext} İndir</button>
+            </div>
+            <pre style="font-size:11px; font-family:monospace; color:#a29bfe; max-height:360px; overflow:auto; margin:0; line-height:1.4;">${previewLines}\n... (kalan ${Math.max(0, lines.length - 100)} satır)</pre>
+          </div>
+        `;
+      } else {
+        contentBox.innerHTML = `<pre style="font-size:11px; background:#111216; padding:10px; border-radius:6px; color:#e6e8ee; max-height:400px; overflow:auto;">${JSON.stringify(outData, null, 2)}</pre>`;
+      }
+      openModal('output-viewer-modal');
+    }
+
+    function downloadNodeOutput(nodeId, outKey) {
+      const nOutputs = (currentExecutionOutputs && currentExecutionOutputs[nodeId]) || {};
+      const outData = nOutputs[outKey];
+      if (!outData) return;
+
+      let filename = `${nodeId}_${outKey}`;
+      let content = '';
+      let mimeType = 'text/plain';
+
+      if (outData.pdb) {
+        const ext = (outData.format || 'pdb').toLowerCase();
+        filename += `.${ext}`;
+        content = outData.pdb;
+        mimeType = 'chemical/x-pdb';
+      } else if (outData.fasta) {
+        filename += '.fasta';
+        content = outData.fasta;
+      } else if (outData.csv) {
+        filename += '.csv';
+        content = outData.csv;
+        mimeType = 'text/csv';
+      } else {
+        filename += '.json';
+        content = JSON.stringify(outData, null, 2);
+        mimeType = 'application/json';
+      }
+
+      const blob = new Blob([content], { type: mimeType });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      a.click();
+      showToast(`${filename} indirildi.`, 'toast-success');
+    }
+
+    function downloadPymolScript(nodeId, outKey) {
+      const nOutputs = (currentExecutionOutputs && currentExecutionOutputs[nodeId]) || {};
+      const outData = nOutputs[outKey];
+      if (!outData || !outData.pymol_pml) return;
+      const filename = `${nodeId}_${outKey}_pymol.pml`;
+      const blob = new Blob([outData.pymol_pml], { type: 'text/plain' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      a.click();
+      showToast(`${filename} indirildi.`, 'toast-success');
+    }
+
+    function openPipelineOutputsModal() {
+      const body = document.getElementById('pipeline-outputs-body');
+      if (!currentExecutionOutputs || Object.keys(currentExecutionOutputs).length === 0) {
+        body.innerHTML = `
+          <div style="text-align:center; padding:40px; color:var(--text-muted);">
+            <p>Henüz çalıştırılmış bir hat yok.</p>
+            <p style="font-size:12px;">Hattı çalıştırdıktan sonra her adımın ara ve nihai çıktıları burada bağımsız kartlar olarak listelenir.</p>
+          </div>
+        `;
+        openModal('pipeline-outputs-modal');
+        return;
+      }
+
+      let html = `<div style="display:flex; flex-direction:column; gap:16px;">`;
+      Object.entries(currentExecutionOutputs).forEach(([nodeId, outs]) => {
+        html += `
+          <div style="background:#151821; border:1px solid var(--border); border-radius:8px; padding:14px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+              <span style="font-weight:700; font-size:13px; color:#fff;">Düğüm: ${nodeId}</span>
+              <span class="node-badge badge-container">Tamamlandı</span>
+            </div>
+            <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap:10px;">
+        `;
+        Object.entries(outs).forEach(([outKey, outData]) => {
+          const typeColor = TYPE_COLORS[outData.type] || '#fff';
+          const infoText = outData.row_count ? `${outData.row_count} satır` : (outData.length ? `${outData.length} bp` : outData.type);
+          html += `
+            <div style="background:#111216; border:1px solid #282b36; border-radius:6px; padding:10px; display:flex; flex-direction:column; justify-content:space-between;">
+              <div style="margin-bottom:8px;">
+                <div style="display:flex; justify-content:space-between;">
+                  <span style="font-weight:600; font-size:12px;">${outKey}</span>
+                  <span style="color:${typeColor}; font-size:11px; font-weight:700;">${outData.type}</span>
+                </div>
+                <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">${infoText}</div>
+              </div>
+              <div style="display:flex; gap:6px;">
+                <button style="flex:1; padding:4px 8px; font-size:11px;" onclick="inspectNodeOutput('${nodeId}', '${outKey}')">İncele</button>
+                <button style="flex:1; padding:4px 8px; font-size:11px; color:#2ed573; border-color:#2ed573;" onclick="downloadNodeOutput('${nodeId}', '${outKey}')">İndir</button>
+              </div>
+            </div>
+          `;
+        });
+        html += `</div></div>`;
+      });
+      html += `</div>`;
+      body.innerHTML = html;
+      openModal('pipeline-outputs-modal');
+    }
+
+    async function loadManifests() {
+      const res = await fetch('/api/manifests');
+      const data = await res.json();
+      allManifests = data.manifests;
+      renderToolLibrary(allManifests);
+    }
+
+    async function loadPipeline() {
+      const res = await fetch('/api/pipeline');
+      const data = await res.json();
+      currentPipeline = data;
+
+      activeNodes = currentPipeline.steps.map((s, idx) => {
+        const mFile = (s.manifest || '').split('/').pop().split('\\').pop();
+        const m = allManifests.find(man => 
+          man.file === mFile ||
+          (s.manifest && s.manifest.includes(man.name)) ||
+          (s.name && man.name && s.name.toLowerCase().includes(man.name.toLowerCase()))
+        ) || {
+          name: s.name,
+          version: "1.0",
+          execution_type: "local",
+          is_remote: false,
+          inputs: s.inputs,
+          outputs: { out: 'Table' },
+          parameters: s.parameters || {}
+        };
+        return {
+          id: s.name,
+          name: s.name,
+          manifestFile: s.manifest,
+          manifest: m,
+          x: 100 + (idx % 4) * 310,
+          y: 100 + Math.floor(idx / 4) * 230,
+          status: 'idle',
+          duration_ms: 0,
+          preview: '',
+          parameters: s.parameters || m.parameters || {},
+          isCollapsed: false
+        };
+      });
+
+      // Type-safe DAG wiring based on pipeline state variable propagation
+      connections = [];
+      const producedBy = {};
+      activeNodes.forEach(node => {
+        const stepDef = (currentPipeline.steps || []).find(s => s.name === node.id);
+        const inputMapping = stepDef ? stepDef.inputs : (node.manifest.inputs || {});
+        if (inputMapping) {
+          Object.entries(inputMapping).forEach(([portName, stateVar]) => {
+            const source = producedBy[stateVar];
+            if (source && source.nodeId !== node.id) {
+              const inType = (node.manifest.inputs || {})[portName];
+              if (!inType || inType === source.type || inType.toLowerCase() === source.type.toLowerCase()) {
+                connections.push({
+                  fromNodeId: source.nodeId,
+                  fromPort: source.portName,
+                  toNodeId: node.id,
+                  toPort: portName,
+                  type: source.type
+                });
+              }
+            }
+          });
+        }
+        Object.entries(node.manifest.outputs || {}).forEach(([outPort, outType]) => {
+          producedBy[outPort] = { nodeId: node.id, portName: outPort, type: outType };
+        });
+      });
+      autoLayoutDAG();
+    }
+
+    function renderToolLibrary(manifests) {
+      const box = document.getElementById('tool-categories');
+      box.innerHTML = '';
+
+      const groups = {};
+      manifests.forEach(m => {
+        const cat = m.category || "Diğer";
+        if (!groups[cat]) groups[cat] = [];
+        groups[cat].push(m);
+      });
+
+      Object.entries(groups).forEach(([cat, list]) => {
+        const groupEl = document.createElement('div');
+        groupEl.className = 'category-group';
+        groupEl.innerHTML = `<div class="category-title">${cat}</div>`;
+        list.forEach(m => {
+          const item = document.createElement('div');
+          item.className = 'tool-item';
+          item.draggable = true;
+          item.innerHTML = `
+            <div>
+              <div class="tool-name">${m.name}</div>
+              <div class="tool-meta">v${m.version} &bull; ${m.execution_type.toUpperCase()}</div>
+            </div>
+            <button style="padding:2px 6px; font-size:10px;" onclick="addNodeToCanvas('${m.file}')">+</button>
+          `;
+          item.ondragstart = (e) => { e.dataTransfer.setData('text/plain', m.file); };
+          groupEl.appendChild(item);
+        });
+        box.appendChild(groupEl);
+      });
+    }
+
+    function filterTools() {
+      const query = document.getElementById('tool-search').value.toLowerCase();
+      const filtered = allManifests.filter(m => 
+        m.name.toLowerCase().includes(query) || 
+        (m.description || '').toLowerCase().includes(query) ||
+        (m.category || '').toLowerCase().includes(query)
+      );
+      renderToolLibrary(filtered);
+    }
+
+    function addNodeToCanvas(manifestFile) {
+      const m = allManifests.find(man => man.file === manifestFile);
+      if (!m) return;
+      const newId = `${m.name}_${Date.now().toString().slice(-4)}`;
+      // Position new node near current center of canvas
+      const container = document.getElementById('canvas-container');
+      const worldCenter = screenToWorld(container.clientWidth / 2, container.clientHeight / 2);
+
+      activeNodes.push({
+        id: newId,
+        name: newId,
+        manifestFile: `manifests/${m.file}`,
+        manifest: m,
+        x: worldCenter.x - 130 + (Math.random() * 60 - 30),
+        y: worldCenter.y - 80 + (Math.random() * 60 - 30),
+        status: 'idle',
+        duration_ms: 0,
+        preview: '',
+        parameters: { ...m.parameters },
+        isCollapsed: false
+      });
+      renderCanvas();
+      selectNode(newId);
+      showToast(`Düğüm eklendi: ${m.name}`);
+    }
+
+    // --- DELETION & SELECTION SYSTEM ---
+    function deleteSelected() {
+      if (selectedConnectionIdx !== null) {
+        deleteConnection(selectedConnectionIdx);
+      } else if (selectedNodeId) {
+        deleteNode(selectedNodeId);
+      } else {
+        showToast("Silmek için önce bir düğüm veya bağlantı seçiniz.", "toast-warn");
+      }
+    }
+
+    function deleteSelectedNode() {
+      deleteSelected();
+    }
+
+    function deleteNode(nodeId, event) {
+      if (event) event.stopPropagation();
+      const nodeIndex = activeNodes.findIndex(n => n.id === nodeId);
+      if (nodeIndex === -1) return;
+
+      const nodeName = activeNodes[nodeIndex].name;
+      activeNodes.splice(nodeIndex, 1);
+
+      // Clean up connections attached to this node
+      connections = connections.filter(c => c.fromNodeId !== nodeId && c.toNodeId !== nodeId);
+      selectedConnectionIdx = null;
+
+      if (selectedNodeId === nodeId) {
+        selectedNodeId = null;
+        document.getElementById('inspector-node-id').innerText = 'Seçim yok';
+        document.getElementById('inspector-body').innerHTML = `
+          <p style="color:var(--text-muted); font-size:12px; text-align:center; margin-top:40px;">
+            Düzenlemek veya silmek için canvas üzerindeki herhangi bir düğüme veya bağlantıya tıklayın.
+          </p>`;
+      }
+
+      renderCanvas();
+      showToast(`Düğüm silindi: ${nodeName}`, 'toast-warn');
+    }
+
+    function deleteConnection(idx, event) {
+      if (event) event.stopPropagation();
+      if (idx < 0 || idx >= connections.length) return;
+      connections.splice(idx, 1);
+      selectedConnectionIdx = null;
+      document.getElementById('inspector-node-id').innerText = 'Seçim yok';
+      document.getElementById('inspector-body').innerHTML = `
+        <p style="color:var(--text-muted); font-size:12px; text-align:center; margin-top:40px;">
+          Düzenlemek veya silmek için canvas üzerindeki herhangi bir düğüme veya bağlantıya tıklayın.
+        </p>`;
+      redrawConnections();
+      showToast("Bağlantı silindi.", "toast-warn");
+    }
+
+    function selectConnection(idx, event) {
+      if (event) event.stopPropagation();
+      selectedConnectionIdx = idx;
+      selectedNodeId = null;
+      renderCanvas();
+      renderConnectionInspector(idx);
+    }
+
+    function renderConnectionInspector(idx) {
+      const conn = connections[idx];
+      if (!conn) return;
+      const fromNode = activeNodes.find(n => n.id === conn.fromNodeId) || { name: conn.fromNodeId };
+      const toNode = activeNodes.find(n => n.id === conn.toNodeId) || { name: conn.toNodeId };
+
+      document.getElementById('inspector-node-id').innerText = `${conn.type} Bağlantısı`;
+      const body = document.getElementById('inspector-body');
+      body.innerHTML = `
+        <div style="font-size:12px; display:flex; flex-direction:column; gap:12px;">
+          <div style="background:#111216; padding:12px; border-radius:6px; border:1px solid var(--border);">
+            <div style="margin-bottom:8px;">
+              <span style="color:var(--text-muted);">Veri Tipi:</span>
+              <span style="color:${TYPE_COLORS[conn.type] || '#fff'}; font-weight:700; margin-left:6px;">${conn.type}</span>
+            </div>
+            <div style="margin-bottom:6px;">
+              <span style="color:var(--text-muted);">Kaynak:</span>
+              <div style="font-weight:600; margin-top:2px;">${fromNode.name} &bull; <code style="color:var(--accent);">${conn.fromPort}</code></div>
+            </div>
+            <div>
+              <span style="color:var(--text-muted);">Hedef:</span>
+              <div style="font-weight:600; margin-top:2px;">${toNode.name} &bull; <code style="color:var(--accent);">${conn.toPort}</code></div>
+            </div>
+          </div>
+          <button class="danger" style="width:100%; justify-content:center; padding:9px; margin-top:6px;" onclick="deleteConnection(${idx}, event)">
+            Bu Bağlantıyı Sil (Del)
+          </button>
+        </div>
+      `;
+    }
+
+    function setupKeyboardShortcuts() {
+      window.addEventListener('keydown', (e) => {
+        // Prevent deletion while typing in inputs
+        if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
+
+        if (e.key === 'Delete' || e.key === 'Backspace') {
+          deleteSelected();
+        } else if (e.key === '=' || e.key === '+') {
+          zoomIn();
+        } else if (e.key === '-') {
+          zoomOut();
+        } else if (e.key === '0') {
+          resetZoomPan();
+        }
+      });
+    }
+
+    // --- INFINITE CANVAS PAN & ZOOM ---
+    function screenToWorld(screenX, screenY) {
+      const container = document.getElementById('canvas-container');
+      const rect = container.getBoundingClientRect();
+      return {
+        x: (screenX - rect.left - panX) / zoom,
+        y: (screenY - rect.top - panY) / zoom
+      };
+    }
+
+    function updateViewportTransform() {
+      const vp = document.getElementById('viewport-pan');
+      vp.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
+      document.getElementById('zoom-level-text').innerText = `${Math.round(zoom * 100)}%`;
+
+      if (zoom < 0.60) {
+        vp.classList.add('lod-compact');
+      } else {
+        vp.classList.remove('lod-compact');
+      }
+
+      const container = document.getElementById('canvas-container');
+      const gridStep = 26 * zoom;
+      const dotX = ((panX % gridStep) + gridStep) % gridStep;
+      const dotY = ((panY % gridStep) + gridStep) % gridStep;
+      container.style.backgroundSize = `${gridStep}px ${gridStep}px`;
+      container.style.backgroundPosition = `${dotX}px ${dotY}px, ${dotX + gridStep/2}px ${dotY + gridStep/2}px`;
+
+      redrawConnections();
+    }
+
+    function zoomIn() {
+      setZoomAtCenter(zoom * 1.2);
+    }
+
+    function zoomOut() {
+      setZoomAtCenter(zoom / 1.2);
+    }
+
+    function resetZoomPan() {
+      zoom = 1.0;
+      panX = 60;
+      panY = 60;
+      updateViewportTransform();
+      showToast("Görünüm sıfırlandı (100%).");
+    }
+
+    function setZoomAtCenter(newZoom) {
+      const container = document.getElementById('canvas-container');
+      const centerX = container.clientWidth / 2;
+      const centerY = container.clientHeight / 2;
+
+      const clampedZoom = Math.min(Math.max(newZoom, MIN_ZOOM), MAX_ZOOM);
+      panX = centerX - (centerX - panX) * (clampedZoom / zoom);
+      panY = centerY - (centerY - panY) * (clampedZoom / zoom);
+      zoom = clampedZoom;
+      updateViewportTransform();
+    }
+
+    function fitView() {
+      if (activeNodes.length === 0) return;
+      const container = document.getElementById('canvas-container');
+      const cW = container.clientWidth;
+      const cH = container.clientHeight;
+
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      activeNodes.forEach(n => {
+        minX = Math.min(minX, n.x);
+        maxX = Math.max(maxX, n.x + 270);
+        minY = Math.min(minY, n.y);
+        maxY = Math.max(maxY, n.y + 200);
+      });
+
+      const bW = Math.max(maxX - minX, 200);
+      const bH = Math.max(maxY - minY, 200);
+      const padding = 70;
+
+      const fitZoom = Math.min(
+        (cW - padding * 2) / bW,
+        (cH - padding * 2) / bH,
+        1.1
+      );
+      zoom = Math.max(Math.min(fitZoom, 1.5), 0.35);
+
+      panX = (cW - bW * zoom) / 2 - minX * zoom;
+      panY = (cH - bH * zoom) / 2 - minY * zoom;
+
+      updateViewportTransform();
+      showToast("Tüm düğümler ekrana sığdırıldı.");
+    }
+
+    function setupPanZoom() {
+      const container = document.getElementById('canvas-container');
+
+      // Mouse wheel zoom centered at cursor
+      container.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const rect = container.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        const factor = e.deltaY < 0 ? 1.12 : 0.89;
+        const newZoom = Math.min(Math.max(zoom * factor, MIN_ZOOM), MAX_ZOOM);
+
+        panX = mouseX - (mouseX - panX) * (newZoom / zoom);
+        panY = mouseY - (mouseY - panY) * (newZoom / zoom);
+        zoom = newZoom;
+
+        updateViewportTransform();
+      }, { passive: false });
+
+      // Canvas pan (click drag on background)
+      container.addEventListener('mousedown', (e) => {
+        if (e.target.closest('.node-card') || e.target.closest('.port-item') || e.target.closest('.canvas-controls') || e.target.closest('.wire-group')) {
+          return;
+        }
+        isPanning = true;
+        panStartX = e.clientX - panX;
+        panStartY = e.clientY - panY;
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (!isPanning) return;
+        panX = e.clientX - panStartX;
+        panY = e.clientY - panStartY;
+        updateViewportTransform();
+      });
+
+      window.addEventListener('mouseup', () => {
+        if (isPanning) isPanning = false;
+      });
+
+      // Drag & drop from library
+      container.ondragover = (e) => e.preventDefault();
+      container.ondrop = (e) => {
+        e.preventDefault();
+        const file = e.dataTransfer.getData('text/plain');
+        if (file) addNodeToCanvas(file);
+      };
+
+      // Deselect on empty click
+      container.addEventListener('click', (e) => {
+        if (!e.target.closest('.node-card') && !e.target.closest('.canvas-controls') && !e.target.closest('.wire-group')) {
+          selectedNodeId = null;
+          selectedConnectionIdx = null;
+          renderCanvas();
+          document.getElementById('inspector-node-id').innerText = 'Seçim yok';
+          document.getElementById('inspector-body').innerHTML = `
+            <p style="color:var(--text-muted); font-size:12px; text-align:center; margin-top:40px;">
+              Düzenlemek veya silmek için canvas üzerindeki herhangi bir düğüme veya bağlantıya tıklayın.
+            </p>`;
+        }
+      });
+    }
+
+    // --- CANVAS & NODE RENDERING ---
+    function renderCanvas() {
+      const container = document.getElementById('nodes-container');
+      container.innerHTML = '';
+
+      activeNodes.forEach(node => {
+        const m = node.manifest;
+        const card = document.createElement('div');
+        card.className = `node-card ${selectedNodeId === node.id ? 'selected' : ''}`;
+        card.id = `node-${node.id}`;
+        card.style.left = `${node.x}px`;
+        card.style.top = `${node.y}px`;
+
+        const badgeClass = `badge-${m.execution_type || 'local'}`;
+        const remoteWarn = m.is_remote ? `<span class="node-badge badge-remote-warn">REMOTE</span>` : '';
+        const statusClass = `status-${node.status || 'idle'}`;
+
+        // Inputs
+        let inHtml = '';
+        Object.entries(m.inputs || {}).forEach(([pName, pType]) => {
+          const col = TYPE_COLORS[pType] || '#888';
+          inHtml += `
+            <div class="port-item" data-node="${node.id}" data-port="${pName}" data-type="${pType}" data-dir="in"
+                 onmousedown="startWireDrag(event, this)">
+              <span class="port-bullet" style="background:${col}"></span>
+              <span>${pName} <small style="color:${col}">(${pType})</small></span>
+            </div>`;
+        });
+
+        // Outputs
+        let outHtml = '';
+        Object.entries(m.outputs || {}).forEach(([pName, pType]) => {
+          const col = TYPE_COLORS[pType] || '#888';
+          outHtml += `
+            <div class="port-item" data-node="${node.id}" data-port="${pName}" data-type="${pType}" data-dir="out"
+                 onmousedown="startWireDrag(event, this)">
+              <span>${pName} <small style="color:${col}">(${pType})</small></span>
+              <span class="port-bullet" style="background:${col}"></span>
+            </div>`;
+        });
+
+        const healthPill = `<span class="health-pill" title="Ortam hazır ve test edilebilir">OK</span>`;
+        let filterHtml = '';
+        if (node.filterStats) {
+          filterHtml = `
+            <div class="filter-stat-badge" title="${node.filterStats.filter_reason || 'Filtre uygulandı'}">
+              <span>Girdi: ${node.filterStats.input_count} → Kalan: <b>${node.filterStats.passed_count}</b></span>
+              <span class="drop-count">-${node.filterStats.dropped_count}</span>
+            </div>
+          `;
+        }
+
+        card.innerHTML = `
+          <div class="node-header">
+            <div class="node-title-box">
+              <span class="status-dot ${statusClass}"></span>
+              <span class="node-title">${node.name}</span>
+            </div>
+            <div class="node-header-actions">
+              <span class="node-badge ${badgeClass}">${m.execution_type || 'local'}</span>
+              ${healthPill}
+              ${remoteWarn}
+              <button class="node-close-btn" title="Düğümü Sil" onclick="deleteNode('${node.id}', event)">&times;</button>
+            </div>
+          </div>
+          <div class="node-body">
+            <div class="ports-container">
+              <div class="ports-in">${inHtml}</div>
+              <div class="ports-out">${outHtml}</div>
+            </div>
+            ${filterHtml}
+            <div class="progress-bar-container" id="prog-${node.id}">
+              <div class="progress-bar" style="width:100%;"></div>
+            </div>
+            <div class="node-preview">
+              <span>${node.status === 'completed' ? `${node.duration_ms}ms` : (node.status === 'cached' ? 'ÖNBELLEK' : 'Hazır')}</span>
+              <span class="node-preview-data">${node.preview || ''}</span>
+            </div>
+          </div>
+        `;
+
+        card.onclick = (e) => {
+          e.stopPropagation();
+          selectNode(node.id);
+        };
+        makeCardDraggable(card, node);
+        container.appendChild(card);
+      });
+
+      updateViewportTransform();
+    }
+
+    function selectNode(nodeId) {
+      selectedNodeId = nodeId;
+      selectedConnectionIdx = null;
+      renderCanvas();
+      renderInspector(nodeId);
+    }
+
+    function renderInspector(nodeId) {
+      const node = activeNodes.find(n => n.id === nodeId);
+      if (!node) return;
+      const m = node.manifest;
+
+      document.getElementById('inspector-node-id').innerText = node.name;
+      const body = document.getElementById('inspector-body');
+
+      const isHttp = m.execution_type === 'http';
+      const remoteCard = m.is_remote ? `
+        <div class="remote-privacy-card">
+          <b>Dış Ağ Servisi</b>
+          <span>Bu düğüm çalıştığında protein sekansı veya yapısı dış ağa aktarılacaktır.</span>
+        </div>` : '';
+
+      // Find compatible manifests for 1-click tool swapping
+      const myInputs = Object.values(m.inputs || {}).sort().join(',');
+      const myOutputs = Object.values(m.outputs || {}).sort().join(',');
+      const swapCandidates = allManifests.filter(other => 
+        other.name !== m.name &&
+        Object.values(other.inputs || {}).sort().join(',') === myInputs &&
+        Object.values(other.outputs || {}).sort().join(',') === myOutputs
+      );
+
+      let swapHtml = '';
+      if (swapCandidates.length > 0) {
+        let options = `<option value="">-- Aracı Değiştir (${swapCandidates.length} alternatif) --</option>`;
+        swapCandidates.forEach(cand => {
+          options += `<option value="${cand.file}">${cand.name} (v${cand.version})</option>`;
+        });
+        swapHtml = `
+          <div class="field-group" style="background:#1b1d25; padding:8px; border-radius:6px; border:1px solid #363a4d;">
+            <label class="field-label" style="color:var(--info);">Hızlı Araç Takası (1-Tık)</label>
+            <select class="field-select" onchange="swapToolForNode('${node.id}', this.value)">
+              ${options}
+            </select>
+          </div>
+        `;
+      }
+
+      let outputsHtml = '';
+      const nOutputs = (currentExecutionOutputs && currentExecutionOutputs[node.id]) || node.outputs;
+      if (nOutputs && Object.keys(nOutputs).length > 0) {
+        outputsHtml = `
+          <div class="field-group" style="background:#151821; padding:10px; border-radius:6px; border:1px solid #2e3447; margin-top:10px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <label class="field-label" style="color:#2ed573; font-weight:700; margin:0;">Düğüm Çıktıları & İndir</label>
+              <span style="font-size:10px; color:var(--text-muted);">${Object.keys(nOutputs).length} çıktı</span>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:6px;">
+        `;
+        Object.entries(nOutputs).forEach(([outKey, outData]) => {
+          const typeColor = TYPE_COLORS[outData.type] || '#fff';
+          const infoText = outData.row_count ? `${outData.row_count} satır` : (outData.length ? `${outData.length} bp` : outData.type);
+          outputsHtml += `
+            <div style="display:flex; justify-content:space-between; align-items:center; background:#111216; padding:6px 8px; border-radius:4px; font-size:11px;">
+              <div>
+                <b style="color:${typeColor}">${outKey}</b> <span style="color:var(--text-muted); font-size:10px;">(${infoText})</span>
+              </div>
+              <div style="display:flex; gap:6px;">
+                <button style="padding:2px 6px; font-size:10px;" onclick="inspectNodeOutput('${node.id}', '${outKey}')">İncele</button>
+                <button style="padding:2px 6px; font-size:10px; color:#2ed573; border-color:#2ed573;" onclick="downloadNodeOutput('${node.id}', '${outKey}')">İndir</button>
+              </div>
+            </div>
+          `;
+        });
+        outputsHtml += `</div></div>`;
+      }
+
+      body.innerHTML = `
+        ${remoteCard}
+        <div style="display:flex; justify-content:space-between; align-items:center; background:#181a21; padding:6px 10px; border-radius:6px; border:1px solid var(--border);">
+          <span style="font-size:11px; color:var(--text-muted);">Durum:</span>
+          <span id="insp-test-status" class="node-badge badge-local">${(node.status || 'idle').toUpperCase()}${node.duration_ms ? ` (${node.duration_ms}ms)` : ''}</span>
+        </div>
+        ${swapHtml}
+        ${outputsHtml}
+        <div class="field-group">
+          <label class="field-label">Düğüm Başlığı</label>
+          <input type="text" class="field-input" value="${node.name}" onchange="updateNodeTitle('${node.id}', this.value)">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Çalışma Modu</label>
+          <select class="field-select" onchange="updateNodeExecType('${node.id}', this.value)">
+            <option value="local" ${m.execution_type==='local'?'selected':''}>LOCAL (Yerel İşlem)</option>
+            <option value="container" ${m.execution_type==='container'?'selected':''}>CONTAINER (Docker / Singularity)</option>
+            <option value="http" ${m.execution_type==='http'?'selected':''}>HTTP (Web Servisi / Bulut GPU)</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label class="field-label">${isHttp ? 'Endpoint URL Adresi' : 'Çalıştırma Komutu / Dosya Yolu'}</label>
+          <input type="text" class="field-input" value="${isHttp ? (m.url||'') : (m.command||'')}" id="insp-exec-target">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Zaman Aşımı (Timeout, saniye)</label>
+          <input type="number" class="field-input" value="${m.timeout || 30}" id="insp-timeout">
+        </div>
+        <div class="field-group">
+          <label class="field-label">API Anahtarı / Gizli Kimlik (Opsiyonel)</label>
+          <input type="password" class="field-input" placeholder="Bearer sk-..." id="insp-api-key">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Adaptör Fonksiyonu</label>
+          <input type="text" class="field-input" value="${m.adapter || ''}" id="insp-adapter">
+        </div>
+        ${(() => {
+          const mParams = m.parameters || {};
+          const keys = Object.keys(mParams);
+          if (keys.length === 0) return '';
+          return `
+            <div style="background:#181b24; padding:8px 10px; border-radius:6px; border:1px solid #2e3447; margin-bottom:10px;">
+              <div style="font-size:11px; font-weight:600; color:#a29bfe; margin-bottom:6px; text-transform:uppercase;">Düğüm Parametreleri</div>
+              ${keys.map(k => {
+                const cur = (node.parameters && node.parameters[k] !== undefined) ? node.parameters[k] : mParams[k];
+                return `
+                  <div class="field-group" style="margin-bottom:6px;">
+                    <label class="field-label" style="font-size:11px;">${k}</label>
+                    <input type="text" class="field-input" value="${cur !== undefined ? cur : ''}" onchange="updateInlineParam('${node.id}', '${k}', this.value)">
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          `;
+        })()}
+        <div class="field-group">
+          <label class="field-label">Gelişmiş Parametreler (JSON)</label>
+          <textarea class="field-textarea" id="insp-params">${JSON.stringify(node.parameters || {}, null, 2)}</textarea>
+        </div>
+        <div style="display:flex; gap:8px; margin-top:8px;">
+          <button class="primary" style="flex:1;" onclick="saveInspectorChanges('${node.id}')">Kaydet</button>
+          <button style="flex:1;" onclick="testNodeInInspector('${node.id}')">Test Et</button>
+        </div>
+        <div id="inspector-test-box" style="display:none; font-size:11px; padding:8px; border-radius:6px; margin-top:6px;"></div>
+        <div style="margin-top:16px; padding-top:12px; border-top:1px solid var(--border);">
+          <button class="danger" style="width:100%; justify-content:center;" onclick="deleteNode('${node.id}')">
+            Bu Düğümü Sil (Del)
+          </button>
+        </div>
+      `;
+    }
+
+    function updateInlineParam(nodeId, key, value) {
+      const n = activeNodes.find(n => n.id === nodeId);
+      if (!n) return;
+      n.parameters = n.parameters || {};
+      let val = value.trim();
+      if (val === 'true') val = true;
+      else if (val === 'false') val = false;
+      else if (!isNaN(Number(val)) && val !== '') val = Number(val);
+      n.parameters[key] = val;
+      const t = document.getElementById('insp-params');
+      if (t) t.value = JSON.stringify(n.parameters, null, 2);
+    }
+
+    function swapToolForNode(nodeId, newManifestFile) {
+      if (!newManifestFile) return;
+      const node = activeNodes.find(n => n.id === nodeId);
+      const newM = allManifests.find(m => m.file === newManifestFile);
+      if (!node || !newM) return;
+
+      const oldName = node.manifest.name;
+      node.manifest = { ...newM };
+      node.manifestFile = `manifests/${newM.file}`;
+      node.parameters = { ...(newM.parameters || {}) };
+
+      // Retain compatible connections
+      connections = connections.filter(c => {
+        if (c.fromNodeId === nodeId) {
+          return node.manifest.outputs && node.manifest.outputs[c.fromPort];
+        }
+        if (c.toNodeId === nodeId) {
+          return node.manifest.inputs && node.manifest.inputs[c.toPort];
+        }
+        return true;
+      });
+
+      renderCanvas();
+      renderInspector(nodeId);
+      showToast(`Araç takas edildi: ${oldName} → ${newM.name}`, "toast-success");
+    }
+
+    function updateNodeTitle(nodeId, newTitle) {
+      const n = activeNodes.find(n => n.id === nodeId);
+      if (n) { n.name = newTitle; renderCanvas(); }
+    }
+
+    function updateNodeExecType(nodeId, newType) {
+      const n = activeNodes.find(n => n.id === nodeId);
+      if (n) {
+        n.manifest.execution_type = newType;
+        n.manifest.is_remote = (newType === 'http' || newType === 'ssh');
+        renderCanvas();
+        renderInspector(nodeId);
+      }
+    }
+
+    async function saveInspectorChanges(nodeId) {
+      const n = activeNodes.find(n => n.id === nodeId);
+      if (!n) return;
+
+      const target = document.getElementById('insp-exec-target').value;
+      if (n.manifest.execution_type === 'http') n.manifest.url = target;
+      else n.manifest.command = target;
+
+      n.manifest.timeout = parseInt(document.getElementById('insp-timeout').value) || 30;
+      n.manifest.adapter = document.getElementById('insp-adapter').value;
+      try {
+        n.parameters = JSON.parse(document.getElementById('insp-params').value);
+      } catch(e) {}
+
+      showToast("Düğüm ayarları kaydedildi.", "toast-success");
+      renderCanvas();
+    }
+
+    async function testNodeInInspector(nodeId) {
+      const n = activeNodes.find(n => n.id === nodeId);
+      if (!n) return;
+      const box = document.getElementById('inspector-test-box');
+      const statusEl = document.getElementById('insp-test-status');
+
+      if (statusEl) {
+        statusEl.innerText = 'ÇALIŞIYOR';
+        statusEl.className = 'node-badge badge-container';
+      }
+      box.style.display = 'block';
+      box.style.background = '#181a22';
+      box.innerHTML = `<span style="color:#70a1ff;">Örnek girdiyle test yürütülüyor...</span>`;
+      n.status = 'running';
+      renderCanvas();
+
+      try {
+        const res = await fetch('/api/manifest/test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ manifest: n.manifest })
+        });
+        const resp = await res.json();
+        if (resp.status === 'PASS') {
+          n.status = 'completed';
+          n.duration_ms = resp.duration_ms;
+          n.preview = Object.entries(resp.outputs || {}).map(([k,v]) => `${k}: ${v}`).join(', ');
+          if (resp.filter_stats) {
+            n.filterStats = resp.filter_stats;
+          }
+          if (statusEl) {
+            statusEl.innerText = `BİTTİ (${resp.duration_ms}ms)`;
+            statusEl.className = 'node-badge badge-container';
+          }
+          let filterSummary = '';
+          if (resp.filter_stats) {
+            filterSummary = `
+              <div style="margin:6px 0; padding:6px; background:#12232f; border:1px solid #00f2fe; border-radius:4px; font-size:11px;">
+                <b>Filtre Özeti:</b> Girdi: ${resp.filter_stats.input_count} &bull; Geçen: ${resp.filter_stats.passed_count} &bull; Elenen: <span style="color:#ff4757;">${resp.filter_stats.dropped_count}</span>
+              </div>
+            `;
+          }
+          const logsHtml = (resp.logs || []).map(l => `<div>${l}</div>`).join('');
+          box.innerHTML = `
+            <div style="color:#2ed573; font-weight:600; margin-bottom:4px;">Test Başarılı (${resp.duration_ms} ms)</div>
+            ${filterSummary}
+            <div class="terminal-box">
+              <div class="terminal-head"><span>UÇBİRİM LOGU</span><span>Girdi/Çıktı Doğrulandı</span></div>
+              <div class="terminal-logs">${logsHtml}</div>
+            </div>
+          `;
+          renderCanvas();
+          showToast(`Test başarılı: ${n.name}`, 'toast-success');
+        } else {
+          n.status = 'error';
+          if (statusEl) {
+            statusEl.innerText = 'HATA';
+            statusEl.className = 'node-badge badge-ssh';
+          }
+          const errLogs = (resp.logs || [resp.error]).map(l => `<div>${l}</div>`).join('');
+          box.innerHTML = `
+            <div style="color:#ff4757; font-weight:600; margin-bottom:4px;">Test Başarısız Oldu</div>
+            <div class="terminal-box">
+              <div class="terminal-head"><span>HATA DETAYI</span></div>
+              <div class="terminal-logs">${errLogs}</div>
+            </div>
+          `;
+          renderCanvas();
+          showToast(`Test hatası: ${resp.error}`, 'toast-error');
+        }
+      } catch (err) {
+        n.status = 'error';
+        if (statusEl) {
+          statusEl.innerText = 'HATA';
+          statusEl.className = 'node-badge badge-ssh';
+        }
+        box.innerHTML = `<div style="color:#ff4757;">Hata: ${err.message}</div>`;
+        renderCanvas();
+      }
+    }
+
+    // Auto-Layout
+    function autoLayoutDAG() {
+      const stageMap = {
+        'prior_input': { col: 0, row: 1 },
+        'gene_prediction': { col: 1, row: 1 },
+        'localization_filter': { col: 2, row: 1 },
+        'structure_prediction': { col: 3, row: 1 },
+        'quality_assessment': { col: 4, row: 1 },
+        'pocket_finding': { col: 5, row: 0 },
+        'surface_hydrophobicity': { col: 5, row: 1 },
+        'structural_homology': { col: 5, row: 2 },
+        'final_prioritization': { col: 6, row: 1 },
+        'codon_optimization': { col: 7, row: 1 }
+      };
+
+      let unknownIdx = 0;
+      activeNodes.forEach(node => {
+        const lower = node.name.toLowerCase();
+        let match = null;
+        for (const [k, pos] of Object.entries(stageMap)) {
+          if (lower.includes(k) || (node.manifestFile && node.manifestFile.toLowerCase().includes(k))) {
+            match = pos;
+            break;
+          }
+        }
+        if (match) {
+          node.x = 80 + match.col * 310;
+          node.y = 60 + match.row * 190;
+        } else {
+          node.x = 80 + (unknownIdx % 5) * 310;
+          node.y = 500 + Math.floor(unknownIdx / 5) * 190;
+          unknownIdx++;
+        }
+      });
+
+      renderCanvas();
+      showToast("Hat soldan sağa katmanlara otomatik düzenlendi.", "toast-success");
+    }
+
+    // Node Dragging with Zoom/Pan scale compensation
+    function makeCardDraggable(card, node) {
+      let isDragging = false;
+      let startWorldX, startWorldY;
+
+      card.addEventListener('mousedown', (e) => {
+        if (e.target.closest('.port-item') || e.target.closest('.node-close-btn')) return;
+        isDragging = true;
+        const world = screenToWorld(e.clientX, e.clientY);
+        startWorldX = world.x - node.x;
+        startWorldY = world.y - node.y;
+        card.style.zIndex = 50;
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const world = screenToWorld(e.clientX, e.clientY);
+        node.x = world.x - startWorldX;
+        node.y = world.y - startWorldY;
+        card.style.left = `${node.x}px`;
+        card.style.top = `${node.y}px`;
+        redrawConnections();
+      });
+
+      window.addEventListener('mouseup', () => {
+        if (isDragging) {
+          isDragging = false;
+          card.style.zIndex = 10;
+        }
+      });
+    }
+
+    // --- ZOOM-AWARE WIRE CONNECTIONS ---
+    function getPortWorldCoords(nodeId, portName, dir) {
+      const node = activeNodes.find(n => n.id === nodeId);
+      if (!node) return null;
+      const card = document.getElementById(`node-${nodeId}`);
+      if (!card) return null;
+      const portEl = card.querySelector(`.port-item[data-port="${portName}"][data-dir="${dir}"]`);
+      if (!portEl) return null;
+
+      const bullet = portEl.querySelector('.port-bullet') || portEl;
+      const bulletRect = bullet.getBoundingClientRect();
+      if (bulletRect.width === 0 && bulletRect.height === 0) {
+        const x = (dir === 'out') ? (node.x + 245) : (node.x + 15);
+        return { x, y: node.y + 60 };
+      }
+      return screenToWorld(bulletRect.left + bulletRect.width / 2, bulletRect.top + bulletRect.height / 2);
+    }
+
+    function startWireDrag(e, portEl) {
+      e.stopPropagation();
+      isDraggingWire = true;
+      const nodeId = portEl.dataset.node;
+      const portName = portEl.dataset.port;
+      const portType = portEl.dataset.type;
+      const dir = portEl.dataset.dir;
+
+      wireStartPort = { nodeId, portName, portType, dir, el: portEl };
+      document.getElementById('temp-wire').style.display = 'block';
+
+      window.addEventListener('mousemove', handleWireMouseMove);
+      window.addEventListener('mouseup', handleWireMouseUp);
+    }
+
+    function handleWireMouseMove(e) {
+      if (!isDraggingWire || !wireStartPort) return;
+      const startCoords = getPortWorldCoords(wireStartPort.nodeId, wireStartPort.portName, wireStartPort.dir);
+      if (!startCoords) return;
+
+      const mouseWorld = screenToWorld(e.clientX, e.clientY);
+      const x1 = startCoords.x;
+      const y1 = startCoords.y;
+      const x2 = mouseWorld.x;
+      const y2 = mouseWorld.y;
+
+      const dx = Math.abs(x2 - x1) * 0.5;
+      const d = `M ${x1} ${y1} C ${x1 + (wireStartPort.dir==='out'?dx:-dx)} ${y1}, ${x2 + (wireStartPort.dir==='out'?-dx:dx)} ${y2}, ${x2} ${y2}`;
+
+      const tempWire = document.getElementById('temp-wire');
+      tempWire.setAttribute('d', d);
+      tempWire.style.stroke = TYPE_COLORS[wireStartPort.portType] || '#fff';
+    }
+
+    function handleWireMouseUp(e) {
+      window.removeEventListener('mousemove', handleWireMouseMove);
+      window.removeEventListener('mouseup', handleWireMouseUp);
+      document.getElementById('temp-wire').style.display = 'none';
+      isDraggingWire = false;
+
+      const target = document.elementFromPoint(e.clientX, e.clientY);
+      const portEl = target ? target.closest('.port-item') : null;
+
+      if (!portEl || !wireStartPort) {
+        wireStartPort = null;
+        return;
+      }
+
+      const targetNodeId = portEl.dataset.node;
+      const targetPort = portEl.dataset.port;
+      const targetType = portEl.dataset.type;
+      const targetDir = portEl.dataset.dir;
+
+      if (wireStartPort.dir === targetDir) {
+        showToast("Çıktı portu sadece Girdi portuna bağlanabilir!", "toast-error");
+        wireStartPort = null;
+        return;
+      }
+
+      if (wireStartPort.portType !== targetType && (wireStartPort.portType || '').toLowerCase() !== (targetType || '').toLowerCase()) {
+        showToast(`Tip Uyuşmazlığı Reddedildi: '${wireStartPort.portType}' çıktısı '${targetType}' portuna bağlanamaz!`, "toast-error");
+        wireStartPort = null;
+        return;
+      }
+
+      const fromNode = (wireStartPort.dir === 'out') ? wireStartPort.nodeId : targetNodeId;
+      const fromP = (wireStartPort.dir === 'out') ? wireStartPort.portName : targetPort;
+      const toNode = (wireStartPort.dir === 'out') ? targetNodeId : wireStartPort.nodeId;
+      const toP = (wireStartPort.dir === 'out') ? targetPort : wireStartPort.portName;
+
+      connections.push({
+        fromNodeId: fromNode,
+        fromPort: fromP,
+        toNodeId: toNode,
+        toPort: toP,
+        type: targetType
+      });
+
+      showToast(`Bağlantı oluşturuldu: [${targetType}]`, "toast-success");
+      wireStartPort = null;
+      redrawConnections();
+    }
+
+    function redrawConnections() {
+      const svg = document.getElementById('svg-connections');
+      const tempWire = document.getElementById('temp-wire');
+      svg.innerHTML = '';
+      svg.appendChild(tempWire);
+
+      connections.forEach((c, idx) => {
+        const p1 = getPortWorldCoords(c.fromNodeId, c.fromPort, 'out');
+        const p2 = getPortWorldCoords(c.toNodeId, c.toPort, 'in');
+        if (!p1 || !p2) return;
+
+        const dx = Math.max(Math.abs(p2.x - p1.x) * 0.5, 40);
+        const pathData = `M ${p1.x} ${p1.y} C ${p1.x + dx} ${p1.y}, ${p2.x - dx} ${p2.y}, ${p2.x} ${p2.y}`;
+
+        const isSelected = (selectedConnectionIdx === idx);
+
+        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        g.setAttribute('class', `wire-group ${isSelected ? 'wire-selected' : ''}`);
+
+        // 1. Invisible thick hitbox for reliable click / hover selection
+        const hitbox = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        hitbox.setAttribute('d', pathData);
+        hitbox.setAttribute('class', 'wire-hitbox');
+        hitbox.onclick = (e) => selectConnection(idx, e);
+        hitbox.ondblclick = (e) => deleteConnection(idx, e);
+        hitbox.oncontextmenu = (e) => { e.preventDefault(); deleteConnection(idx, e); };
+        g.appendChild(hitbox);
+
+        // 2. Visible wire path
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', pathData);
+        path.setAttribute('class', 'wire');
+        path.style.stroke = isSelected ? '#ff4757' : (TYPE_COLORS[c.type] || '#6c5ce7');
+        g.appendChild(path);
+
+        // 3. Delete badge (X) in the center of the wire
+        const midX = 0.5 * p1.x + 0.5 * p2.x;
+        const midY = 0.5 * p1.y + 0.5 * p2.y;
+
+        const badge = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        badge.setAttribute('class', 'wire-delete-badge');
+        badge.setAttribute('transform', `translate(${midX}, ${midY})`);
+        badge.style.display = isSelected ? 'block' : 'none';
+        badge.onclick = (e) => { e.stopPropagation(); deleteConnection(idx, e); };
+
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('r', '10');
+        circle.setAttribute('fill', '#ff4757');
+        circle.setAttribute('stroke', '#ffffff');
+        circle.setAttribute('stroke-width', '1.5');
+        badge.appendChild(circle);
+
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('text-anchor', 'middle');
+        text.setAttribute('dominant-baseline', 'central');
+        text.setAttribute('fill', '#ffffff');
+        text.setAttribute('font-size', '13');
+        text.setAttribute('font-weight', 'bold');
+        text.setAttribute('pointer-events', 'none');
+        text.textContent = '×';
+        badge.appendChild(text);
+
+        g.onmouseenter = () => { if (!isSelected) badge.style.display = 'block'; };
+        g.onmouseleave = () => { if (!isSelected) badge.style.display = 'none'; };
+
+        g.appendChild(badge);
+        svg.appendChild(g);
+      });
+    }
+
+    // --- PIPELINE EXECUTION ---
+    async function runPipelineStudio() {
+      const hasRemote = activeNodes.some(n => n.manifest.is_remote);
+      if (hasRemote && !privacyConsentGiven) {
+        const remoteNode = activeNodes.find(n => n.manifest.is_remote);
+        document.getElementById('privacy-tool-name').innerText = remoteNode.name;
+        document.getElementById('privacy-tool-url').innerText = remoteNode.manifest.url || 'Uzak API';
+        openModal('privacy-modal');
+        return;
+      }
+
+      showToast("Hat çalıştırılıyor... Düğümler işleniyor.", "toast-success");
+      activeNodes.forEach(n => { n.status = 'running'; });
+      renderCanvas();
+
+      try {
+        // Topologically sort active nodes using connection dependencies
+        const nodeMap = {};
+        const inDegree = {};
+        const adj = {};
+        activeNodes.forEach(n => {
+          nodeMap[n.id] = n;
+          inDegree[n.id] = 0;
+          adj[n.id] = [];
+        });
+        connections.forEach(c => {
+          if (inDegree[c.toNodeId] !== undefined && adj[c.fromNodeId] !== undefined) {
+            adj[c.fromNodeId].push(c.toNodeId);
+            inDegree[c.toNodeId]++;
+          }
+        });
+        const queue = activeNodes.filter(n => inDegree[n.id] === 0).sort((a, b) => (a.x || 0) - (b.x || 0));
+        const sortedNodes = [];
+        while (queue.length > 0) {
+          const curr = queue.shift();
+          sortedNodes.push(curr);
+          (adj[curr.id] || []).forEach(nextId => {
+            inDegree[nextId]--;
+            if (inDegree[nextId] === 0) {
+              queue.push(nodeMap[nextId]);
+              queue.sort((a, b) => (a.x || 0) - (b.x || 0));
+            }
+          });
+        }
+        activeNodes.forEach(n => {
+          if (!sortedNodes.includes(n)) sortedNodes.push(n);
+        });
+
+        const dynamicSteps = sortedNodes.map(n => {
+          const stepInputs = {};
+          connections.filter(c => c.toNodeId === n.id).forEach(c => {
+            stepInputs[c.toPort] = `${c.fromNodeId}.${c.fromPort}`;
+          });
+          const mFile = n.manifestFile || (n.manifest && n.manifest.file ? `manifests/${n.manifest.file}` : `manifests/${n.manifest.name}.yaml`);
+          return {
+            name: n.id,
+            manifest: mFile,
+            manifest_path: mFile,
+            inputs: stepInputs,
+            parameters: n.parameters || (n.manifest ? n.manifest.parameters : {}) || {}
+          };
+        });
+
+        const priorNode = sortedNodes.find(n => (n.manifest && n.manifest.name === 'prior_input') || n.id === 'prior_input');
+        const genomeDnaToSend = activeGenomeDna || (priorNode && priorNode.parameters && priorNode.parameters.genome_dna);
+        const orgIdToSend = activeOrganismId || (priorNode && priorNode.parameters && priorNode.parameters.organism);
+
+        const bodyObj = (dynamicSteps.length > 0) ? {
+          pipeline: { steps: dynamicSteps },
+          genome_dna: genomeDnaToSend,
+          organism: orgIdToSend
+        } : {
+          genome_dna: genomeDnaToSend,
+          organism: orgIdToSend
+        };
+
+        const res = await fetch('/api/pipeline/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(bodyObj)
+        });
+        const data = await res.json();
+        if (data.status === 'SUCCESS') {
+          currentExecutionOutputs = data.node_outputs || {};
+          data.step_results.forEach(stepRes => {
+            const node = activeNodes.find(n => n.id === stepRes.name);
+            if (node) {
+              node.status = stepRes.status;
+              node.duration_ms = stepRes.duration_ms;
+              node.preview = stepRes.preview;
+              node.outputs = stepRes.outputs;
+              if (stepRes.filter_stats) {
+                node.filterStats = stepRes.filter_stats;
+              }
+            }
+          });
+          renderCanvas();
+          if (selectedNodeId) renderInspector(selectedNodeId);
+          showToast("Hat tamamlandı! Her adımın çıktıları denetim panelinde hazır.", "toast-success");
+          if (data.priority_table && data.priority_table.length > 0 && activeNodes.some(n => n.name.toLowerCase().includes('prioritiz'))) {
+            renderResultsModal(data);
+          }
+        } else {
+          showToast(`Hata: ${data.error}`, "toast-error");
+        }
+      } catch (err) {
+        showToast(`Sunucu hatası: ${err.message}`, "toast-error");
+      }
+    }
+
+    function confirmPrivacyConsent() {
+      privacyConsentGiven = true;
+      closeModal('privacy-modal');
+      runPipelineStudio();
+    }
+
+    function renderResultsModal(data) {
+      const box = document.getElementById('results-table-box');
+      let html = `<table><tr><th>Protein ID</th><th>Final Skor</th><th>Yapı Kalitesi</th><th>Cep Skoru</th><th>Hacim</th><th>Durum</th></tr>`;
+      data.priority_table.forEach(r => {
+        html += `<tr><td><b>${r.protein_id}</b></td><td><b style="color:#00f2fe;">${r.final_priority_score}</b></td><td>${r.structure_quality}</td><td>${r.pocket_score}</td><td>${r.pocket_volume} Å³</td><td><span style="color:${r.status==='CANDIDATE'?'#2ed573':'#ff4757'}">${r.status}</span></td></tr>`;
+      });
+      html += `</table>`;
+      box.innerHTML = html;
+
+      const wetBox = document.getElementById('wetlab-table-box');
+      let wHtml = `<table><tr><th>Aday</th><th>Mutasyon Kodu</th><th>Deney / Analiz</th><th>Gerekçe</th></tr>`;
+      data.alanine_mutants.forEach(m => {
+        wHtml += `<tr><td>${m.protein_id}</td><td><b style="color:#feca57;">${m.mutation_code}</b></td><td>${m.experimental_assay}</td><td>${m.validation_rationale}</td></tr>`;
+      });
+      wHtml += `</table>`;
+      wetBox.innerHTML = wHtml;
+
+      openModal('results-modal');
+    }
+
+    async function openBenchmarkModal() {
+      openModal('benchmark-modal');
+      const res = await fetch('/api/benchmark/variants');
+      const data = await res.json();
+      if (data.status === 'SUCCESS') {
+        let vHtml = `<table><tr><th>Varyant</th><th>Cep Aracı</th><th>F1 Skor</th><th>Hassasiyet</th></tr>`;
+        data.variants.forEach(v => {
+          vHtml += `<tr><td>${v.variant}</td><td>${v.pocket_tool}</td><td><b>${v.f1_score}</b></td><td>${v.precision}</td></tr>`;
+        });
+        vHtml += `</table>`;
+        document.getElementById('benchmark-table-box').innerHTML = vHtml;
+
+        renderBenchmarkChart(data.variants);
+
+        let cHtml = `<table><tr><th>Sınıf</th><th>Örnek</th><th>Pozitif</th><th>Doğruluk</th><th>Güvenilirlik</th></tr>`;
+        data.calibration.forEach(c => {
+          cHtml += `<tr><td>${c.ec_class}</td><td>${c.samples}</td><td>${c.true_positives}</td><td>%${Math.round(c.empirical_precision*100)}</td><td><span style="color:#2ed573;">${c.reliability_grade}</span></td></tr>`;
+        });
+        cHtml += `</table>`;
+        document.getElementById('calibration-table-box').innerHTML = cHtml;
+      }
+    }
+
+    function renderBenchmarkChart(variants) {
+      const svg = document.getElementById('benchmark-chart');
+      svg.innerHTML = '';
+      const barWidth = 60;
+      const chartHeight = 180;
+
+      variants.forEach((v, idx) => {
+        const x = 30 + idx * 80;
+        const h = v.f1_score * 140;
+        const y = chartHeight - h;
+
+        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('x', x);
+        rect.setAttribute('y', y);
+        rect.setAttribute('width', barWidth);
+        rect.setAttribute('height', h);
+        rect.setAttribute('fill', idx === 0 ? '#6c5ce7' : '#2ed573');
+        rect.setAttribute('rx', 4);
+        svg.appendChild(rect);
+
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', x + 15);
+        text.setAttribute('y', y - 6);
+        text.setAttribute('fill', '#fff');
+        text.setAttribute('font-size', '11px');
+        text.textContent = `F1:${v.f1_score}`;
+        svg.appendChild(text);
+
+        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        label.setAttribute('x', x);
+        label.setAttribute('y', chartHeight + 20);
+        label.setAttribute('fill', '#888');
+        label.setAttribute('font-size', '10px');
+        label.textContent = `V${idx+1}`;
+        svg.appendChild(label);
+      });
+    }
+
+    function exportPipelineJSON() {
+      const exportData = {
+        name: currentPipeline.name,
+        nodes: activeNodes.map(n => ({
+          id: n.id,
+          manifestFile: n.manifestFile,
+          x: n.x, y: n.y,
+          parameters: n.parameters
+        })),
+        connections: connections
+      };
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `pipeline_studio_${Date.now()}.json`;
+      a.click();
+      showToast("Hat JSON dosyası olarak indirildi.", "toast-success");
+    }
+
+    function importPipelineJSON(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const imported = JSON.parse(e.target.result);
+          if (imported.nodes) {
+            activeNodes = imported.nodes.map(n => {
+              const m = allManifests.find(man => n.manifestFile.includes(man.name)) || {
+                name: n.id, execution_type: 'local', is_remote: false, inputs:{}, outputs:{}
+              };
+              return {
+                id: n.id, name: n.id, manifestFile: n.manifestFile, manifest: m,
+                x: n.x, y: n.y, status: 'idle', parameters: n.parameters || {}
+              };
+            });
+            connections = imported.connections || [];
+            renderCanvas();
+            fitView();
+            showToast("Hat başarıyla içe aktarıldı!", "toast-success");
+          }
+        } catch(err) {
+          showToast(`Geçersiz JSON dosyası: ${err.message}`, "toast-error");
+        }
+      };
+      reader.readAsText(file);
+    }
+
+
+    function openNewCustomNodeModal() {
+      const sample = `name: custom_designer
+version: "1.0.0"
+description: Özel tasarım aracı
+inputs:
+  structure: Structure
+outputs:
+  pockets: Pocket
+execution:
+  type: local
+  command: "python -c \\"pass\\""
+adapter: protflow.adapters.pockets:parse_p2rank`;
+      document.getElementById('node-yaml-editor').value = sample;
+      openModal('custom-node-modal');
+    }
+
+    async function testManifestInModal() {
+      const yamlStr = document.getElementById('node-yaml-editor').value;
+      const box = document.getElementById('test-output-box');
+      box.style.display = 'block';
+      box.style.background = '#252833';
+      box.innerText = 'Test yürütülüyor...';
+
+      try {
+        const parsed = jsyaml_parse(yamlStr);
+        const res = await fetch('/api/manifest/test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ manifest: parsed })
+        });
+        const resp = await res.json();
+        if (resp.status === 'PASS') {
+          box.style.background = '#10ac84';
+          box.innerText = `BAŞARILI: ${resp.message}`;
+        } else {
+          box.style.background = '#c0392b';
+          box.innerText = `HATA: ${resp.error}`;
+        }
+      } catch (err) {
+        box.style.background = '#c0392b';
+        box.innerText = `YAML Ayrıştırma Hatası: ${err.message}`;
+      }
+    }
+
+    function jsyaml_parse(str) {
+      // shortcut: basic client-side YAML parser for flat manifest props; server validates the full schema via pyyaml.
+      const lines = str.split('\n');
+      const obj = { inputs: {}, outputs: {}, execution: {} };
+      let currentSection = null;
+
+      lines.forEach(l => {
+        const trimmed = l.trim();
+        if (!trimmed || trimmed.startsWith('#')) return;
+
+        if (trimmed.startsWith('inputs:')) { currentSection = 'inputs'; return; }
+        if (trimmed.startsWith('outputs:')) { currentSection = 'outputs'; return; }
+        if (trimmed.startsWith('execution:')) { currentSection = 'execution'; return; }
+
+        if (currentSection && l.startsWith('  ')) {
+          const parts = trimmed.split(':');
+          if (parts.length >= 2) {
+            obj[currentSection][parts[0].trim()] = parts.slice(1).join(':').trim().replace(/['"]/g, '');
+          }
+        } else if (trimmed.includes(':')) {
+          const parts = trimmed.split(':');
+          obj[parts[0].trim()] = parts.slice(1).join(':').trim().replace(/['"]/g, '');
+        }
+      });
+      return obj;
+    }
+
+    async function saveManifestFromModal() {
+      const raw_yaml = document.getElementById('node-yaml-editor').value;
+      const parsed = jsyaml_parse(raw_yaml);
+      const filename = `${parsed.name || 'custom'}.yaml`;
+
+      try {
+        const res = await fetch('/api/manifest/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename, raw_yaml })
+        });
+        const resp = await res.json();
+        if (resp.status === 'SUCCESS') {
+          showToast(`Düğüm kaydedildi: ${filename}`, "toast-success");
+          closeModal('custom-node-modal');
+          await loadManifests();
+        } else {
+          showToast(`Doğrulama Hatası: ${resp.error}`, "toast-error");
+        }
+      } catch(err) {
+        showToast(`Kaydetme hatası: ${err.message}`, "toast-error");
+      }
+    }
+
+    function openWetLabModal() { openModal('wetlab-modal'); }
+    function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+    function showToast(msg, type = 'toast-info') {
+      const t = document.getElementById('toast');
+      t.innerText = msg;
+      t.className = type;
+      t.style.display = 'block';
+      setTimeout(() => { t.style.display = 'none'; }, 3500);
+    }
+
+    window.onload = init;
+  </script>
+</body>
+</html>

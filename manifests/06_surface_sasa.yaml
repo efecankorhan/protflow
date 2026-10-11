@@ -1,0 +1,11 @@
+name: freesasa
+version: "2.1.2"
+description: Solvent accessible surface area and hydrophobic exposure calculation
+inputs:
+  structure: Structure
+outputs:
+  sasa_table: Table
+execution:
+  type: local
+  command: "freesasa --format=json {inputs.structure.file_path}"
+adapter: protflow.adapters.surface:parse_surface_sasa

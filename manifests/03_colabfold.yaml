@@ -1,0 +1,12 @@
+name: colabfold
+version: "1.5.5"
+description: Fast local de novo structure prediction with ColabFold / AlphaFold2
+inputs:
+  protein: Sequence
+outputs:
+  structure: Structure
+  residue_scores: ResidueScore
+execution:
+  type: local
+  command: "colabfold_batch {inputs.protein.file_path} {output_dir}"
+adapter: protflow.adapters.structure_fetch:parse_alphafold_fetcher

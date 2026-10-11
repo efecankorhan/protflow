@@ -1,0 +1,15 @@
+name: plddt_filter
+version: "1.0.0"
+description: Quality filter to eliminate low-confidence structures
+inputs:
+  structure: Structure
+  residue_scores: ResidueScore
+outputs:
+  structure: Structure
+  quality_table: Table
+parameters:
+  min_plddt: 70.0
+execution:
+  type: local
+  command: "python -c \"pass\""
+adapter: protflow.adapters.quality:parse_plddt_filter

@@ -1,0 +1,19 @@
+name: rfdiffusion
+version: "1.1.0"
+description: De novo protein backbone generation and binder design on rented GPU server
+is_remote: true
+inputs:
+  structure: Structure
+outputs:
+  designed_structure: Structure
+parameters:
+  contigs: "50-100"
+  num_designs: 10
+execution:
+  type: http # Or container on rented worker: docker run --gpus all ...
+  url: "https://gpu-worker.rented-server.internal/api/rfdiffusion/run"
+  method: POST
+  timeout: 300
+  headers:
+    Authorization: "Bearer ${GPU_SERVER_API_KEY}"
+adapter: protflow.adapters.structure_fetch:parse_alphafold_fetcher

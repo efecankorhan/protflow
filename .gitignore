@@ -1,0 +1,28 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Test & pipeline runtime caches
+.pytest_cache/
+.protflow_cache/
+.protflow_work/
+*.log
+
+# Heavy third-party binaries (JRE, P2Rank, MMseqs)
+tools/jre/
+tools/p2rank_2.5.1/
+tools/mmseqs/
+tools/scratch/
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# IDE & OS artifacts
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
