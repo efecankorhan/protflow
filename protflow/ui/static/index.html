@@ -1977,10 +1977,20 @@
       if (!n) return;
 
       const target = document.getElementById('insp-exec-target').value;
-      if (n.manifest.execution_type === 'http') n.manifest.url = target;
-      else n.manifest.command = target;
+      if (!n.manifest.execution) {
+        n.manifest.execution = { type: n.manifest.execution_type || 'local' };
+      }
+      n.manifest.execution.type = n.manifest.execution_type || 'local';
+      if (n.manifest.execution_type === 'http') {
+        n.manifest.url = target;
+        n.manifest.execution.url = target;
+      } else {
+        n.manifest.command = target;
+        n.manifest.execution.command = target;
+      }
 
       n.manifest.timeout = parseInt(document.getElementById('insp-timeout').value) || 30;
+      n.manifest.execution.timeout = n.manifest.timeout;
       n.manifest.adapter = document.getElementById('insp-adapter').value;
       try {
         n.parameters = JSON.parse(document.getElementById('insp-params').value);
@@ -2007,10 +2017,19 @@
       renderCanvas();
 
       try {
+        const testManifest = { ...n.manifest };
+        if (!testManifest.execution) {
+          testManifest.execution = {
+            type: testManifest.execution_type || 'local',
+            command: testManifest.command || '',
+            url: testManifest.url || '',
+            timeout: testManifest.timeout || 30
+          };
+        }
         const res = await fetch('/api/manifest/test', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ manifest: n.manifest })
+          body: JSON.stringify({ manifest: testManifest, parameters: n.parameters || {} })
         });
         const resp = await res.json();
         if (resp.status === 'PASS') {

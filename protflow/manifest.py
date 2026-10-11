@@ -42,6 +42,14 @@ class Manifest:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> Manifest:
+        data = dict(data)
+        if "execution" not in data and "execution_type" in data:
+            data["execution"] = {
+                "type": data["execution_type"],
+                "command": data.get("command"),
+                "url": data.get("url"),
+                "timeout": data.get("timeout", 30),
+            }
         # Validate required fields
         for req in ("name", "version", "inputs", "outputs", "execution", "adapter"):
             if req not in data:

@@ -11,8 +11,10 @@ from pathlib import Path
 from datetime import datetime, timezone
 import json
 import logging
+import math
 import time
 import urllib.parse
+from typing import Any
 import pandas as pd
 import yaml
 
@@ -28,6 +30,19 @@ logger = logging.getLogger("protflow.ui")
 
 STATIC_DIR = Path(__file__).parent / "static"
 PROJECT_ROOT = Path(__file__).parent.parent.parent
+
+
+def sanitize_json_obj(obj: Any) -> Any:
+    """Recursively replaces NaN, Infinity, -Infinity with None so output is strict, valid JSON."""
+    if isinstance(obj, float):
+        if math.isnan(obj) or math.isinf(obj):
+            return None
+        return obj
+    elif isinstance(obj, dict):
+        return {k: sanitize_json_obj(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [sanitize_json_obj(v) for v in obj]
+    return obj
 
 
 def get_manifest_category(name: str) -> str:
@@ -127,7 +142,8 @@ class ProtFlowUIHandler(BaseHTTPRequestHandler):
         self.wfile.write(content)
 
     def _send_json(self, payload: dict, status: int = 200):
-        content = json.dumps(payload, default=str).encode("utf-8")
+        cleaned = sanitize_json_obj(payload)
+        content = json.dumps(cleaned, default=str).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(content)))
@@ -148,6 +164,12 @@ class ProtFlowUIHandler(BaseHTTPRequestHandler):
                         "version": m.version,
                         "description": m.description,
                         "category": category,
+                        "execution": {
+                            "type": m.execution.type,
+                            "command": m.execution.command or "",
+                            "url": m.execution.url or "",
+                            "timeout": m.execution.timeout
+                        },
                         "execution_type": m.execution.type,
                         "is_remote": m.is_remote,
                         "command": m.execution.command or "",
@@ -217,7 +239,15 @@ class ProtFlowUIHandler(BaseHTTPRequestHandler):
     def _handle_test_manifest(self, data: dict):
         """Tests a manifest with a realistic input to verify execution, types, and logs."""
         try:
-            m = Manifest.from_dict(data["manifest"])
+            m_dict = dict(data.get("manifest", {}))
+            if "execution" not in m_dict and "execution_type" in m_dict:
+                m_dict["execution"] = {
+                    "type": m_dict["execution_type"],
+                    "command": m_dict.get("command"),
+                    "url": m_dict.get("url"),
+                    "timeout": m_dict.get("timeout", 30),
+                }
+            m = Manifest.from_dict(m_dict)
             runner = Runner(enable_cache=False)
             logs = []
             now_str = datetime.now(timezone.utc).strftime("%H:%M:%S")
@@ -267,7 +297,12 @@ class ProtFlowUIHandler(BaseHTTPRequestHandler):
                     logs.append(f"[{now_str}] Girdi bağlandı: {in_name} ({in_type})")
 
             t0 = time.perf_counter()
-            outputs = runner.run(m, test_inputs, parameters={"allow_synthetic_fallback": True})
+            test_params = {"allow_synthetic_fallback": True}
+            if m.parameters:
+                test_params.update(m.parameters)
+            if data.get("parameters"):
+                test_params.update(data["parameters"])
+            outputs = runner.run(m, test_inputs, parameters=test_params)
             dur_ms = round((time.perf_counter() - t0) * 1000.0, 1)
 
             out_summary = {}

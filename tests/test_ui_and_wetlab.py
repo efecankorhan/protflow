@@ -269,3 +269,41 @@ def test_ui_ncbi_fetch_endpoint(ui_test_server):
         pass  # Graceful fallback if offline
 
 
+def test_ui_flattened_manifest_testing_and_strict_json_compliance(ui_test_server):
+    """Verify that node testing accepts flattened manifest structures and json serialization is 100% strict JSON (no NaN)."""
+    # 1. Test flattened manifest format from UI inspector
+    flattened_manifest = {
+        "manifest": {
+            "name": "prior_input",
+            "version": "1.0.0",
+            "execution_type": "local",
+            "command": "python -c \"pass\"",
+            "inputs": {},
+            "outputs": {"genome": "Sequence", "codon_table": "Table"},
+            "adapter": "protflow.adapters.genomics:parse_prior_input",
+            "parameters": {"organism": "ecoli_k12"}
+        },
+        "parameters": {"organism": "ecoli_k12"}
+    }
+    req_post = urllib.request.Request(
+        f"{ui_test_server}/api/manifest/test",
+        data=json.dumps(flattened_manifest).encode("utf-8"),
+        headers={"Content-Type": "application/json"}
+    )
+    res = urllib.request.urlopen(req_post)
+    test_res = json.loads(res.read().decode("utf-8"))
+    assert test_res["status"] == "PASS"
+
+    # 2. Verify strict JSON compliance (no unquoted NaN/Infinity)
+    from protflow.ui.server import sanitize_json_obj
+    dirty_data = {"score": float("nan"), "vol": float("inf"), "normal": 42.0}
+    clean = sanitize_json_obj(dirty_data)
+    clean_str = json.dumps(clean)
+    assert "NaN" not in clean_str
+    assert "Infinity" not in clean_str
+    parsed = json.loads(clean_str)
+    assert parsed["score"] is None
+    assert parsed["vol"] is None
+
+
+
