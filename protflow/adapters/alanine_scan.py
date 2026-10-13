@@ -20,6 +20,9 @@ def generate_alanine_mutants(
     Selects top candidates from the priority table and designs alanine scanning mutants
     targeting key residues in the predicted catalytic pocket.
     """
+    if priority_df.empty or "final_priority_score" not in priority_df.columns or pockets_df.empty:
+        return pd.DataFrame()
+
     candidates = priority_df.sort_values(by="final_priority_score", ascending=False).head(top_n)
     rows = []
 
@@ -30,10 +33,11 @@ def generate_alanine_mutants(
         # Find matching pocket residues
         cand_pockets = pockets_df[pockets_df["protein_id"] == pid]
         if cand_pockets.empty or "residues" not in cand_pockets.columns:
-            res_str = "A:24,A:25,A:55"
-        else:
-            res_val = cand_pockets["residues"].iloc[0]
-            res_str = str(res_val) if res_val else "A:24,A:25,A:55"
+            continue
+        res_val = cand_pockets["residues"].iloc[0]
+        if not res_val:
+            continue
+        res_str = str(res_val)
 
         residue_items = [r.strip() for r in res_str.split(",") if r.strip()][:max_mutants_per_protein]
 

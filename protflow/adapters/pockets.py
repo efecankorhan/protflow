@@ -34,8 +34,8 @@ def _detect_cavities_from_structure(structure: Structure, method: str) -> Pocket
 
     coords = []
     res_keys = []
-    for model in st:
-        for chain in model:
+    if len(st) > 0:
+        for chain in st[0]:
             for res in chain:
                 if res.is_water(): continue
                 for atom in res:

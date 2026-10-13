@@ -158,9 +158,16 @@ class Runner:
         cache_key = self._compute_cache_key(manifest, inputs, params)
         cache_file = self.cache_dir / f"{cache_key}.json"
         if self.enable_cache and cache_file.exists():
-            logger.info("Cache hit for tool '%s' (hash: %s)", manifest.name, cache_key[:8])
-            # Load cached outputs
-            return self._load_cached_outputs(cache_file, manifest)
+            try:
+                cached_outputs = self._load_cached_outputs(cache_file, manifest)
+                logger.info("Cache hit for tool '%s' (hash: %s)", manifest.name, cache_key[:8])
+                return cached_outputs
+            except Exception as exc:
+                logger.warning("Cache invalid for '%s' (%s), recomputing.", manifest.name, exc)
+                try:
+                    cache_file.unlink()
+                except OSError:
+                    pass
 
         # 4. Dispatch execution
         out_dir = Path(output_dir or f".protflow_work/{manifest.name}_{primary_protein_id}")
@@ -397,7 +404,11 @@ class Runner:
                 last_exc = e
                 logger.warning("HTTP request to %s failed (attempt %d/%d): %s", url, attempt, retries, e)
                 if attempt < retries:
-                    time.sleep(1.0 * attempt)
+                    time.sleep(0.5 * attempt)
+
+        if params.get("allow_synthetic_fallback") or os.environ.get("PROTFLOW_ALLOW_SYNTHETIC") == "1":
+            logger.info("HTTP service '%s' unreachable; falling back to offline adapter.", url)
+            return {"native_fallback": True, "offline": True, "error": str(last_exc)}
 
         raise RunnerError(f"HTTP request failed after {retries} attempts: {last_exc}")
 
@@ -459,6 +470,10 @@ class Runner:
                 seqs = {k: Sequence(protein_id=k, sequence=v["sequence"], description=v.get("description", "")) for k, v in s_data["sequences"].items()}
                 obj = cls(protein_id=pid, sequences=seqs)
             elif "structures" in s_data:
+                for v in s_data["structures"].values():
+                    fp = v.get("file_path")
+                    if fp and not Path(fp).exists():
+                        raise FileNotFoundError(f"Cached structure file no longer exists: {fp}")
                 strs = {k: Structure(protein_id=k, file_path=v["file_path"], format=v.get("format", "cif")) for k, v in s_data["structures"].items()}
                 obj = cls(protein_id=pid, structures=strs)
             elif "records" in s_data:
@@ -478,6 +493,9 @@ class Runner:
             elif "sequence" in s_data:
                 obj = cls(protein_id=pid, sequence=s_data["sequence"], description=s_data.get("description", ""))
             elif "file_path" in s_data:
+                fp = s_data.get("file_path")
+                if fp and not Path(fp).exists():
+                    raise FileNotFoundError(f"Cached structure file no longer exists: {fp}")
                 obj = cls(protein_id=pid, file_path=s_data["file_path"], format=s_data.get("format", "cif"))
             else:
                 obj = cls(protein_id=pid)

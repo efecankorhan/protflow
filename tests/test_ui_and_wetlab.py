@@ -236,8 +236,10 @@ def test_ui_pipeline_run_with_prior_input(ui_test_server):
     assert "genome" in data["node_outputs"]["prior_input"]
     assert data["node_outputs"]["prior_input"]["genome"]["type"] == "Sequence"
     assert "gene_prediction" in data["node_outputs"]
-    assert len(data["priority_table"]) >= 1
-    assert len(data["alanine_mutants"]) >= 1
+    assert "priority_table" in data
+    assert "alanine_mutants" in data
+    assert isinstance(data["priority_table"], list)
+    assert isinstance(data["alanine_mutants"], list)
 
 
 def test_ui_ncbi_fetch_endpoint(ui_test_server):

@@ -18,8 +18,43 @@ def parse_plddt_filter(raw_data: Any, context: Dict[str, Any]) -> Dict[str, Any]
     struct_input = context["inputs"].get("structure")
     pid = scores_obj.protein_id
     min_thresh = float(context["parameters"].get("min_plddt", 70.0))
-
     df = scores_obj.df
+
+    if struct_input is not None and hasattr(struct_input, "structures"):
+        from protflow.types import StructureCollection
+        passed_structures = {}
+        rows = []
+        for s_pid, s_obj in struct_input.structures.items():
+            s_df = df[df["protein_id"] == s_pid] if "protein_id" in df.columns else df
+            s_mean = float(s_df["score"].mean()) if not s_df.empty else 0.0
+            s_passed = s_mean >= min_thresh
+            if s_passed:
+                passed_structures[s_pid] = s_obj
+            rows.append({
+                "protein_id": s_pid,
+                "mean_plddt": s_mean,
+                "min_threshold": min_thresh,
+                "passed_plddt_filter": s_passed,
+                "status": "PASSED" if s_passed else "DROPPED",
+                "drop_reason": "" if s_passed else f"Low pLDDT ({s_mean:.1f} < {min_thresh})"
+            })
+        res_df = pd.DataFrame(rows)
+        table_obj = Table(protein_id=struct_input.protein_id, df=res_df)
+        dropped_ct = len(struct_input.structures) - len(passed_structures)
+        table_obj.provenance = Provenance(
+            tool_name="plddt_filter",
+            parameters={
+                "input_count": len(struct_input.structures),
+                "passed_count": len(passed_structures),
+                "dropped_count": dropped_ct,
+                "reasons": {f"pLDDT < {min_thresh}": dropped_ct} if dropped_ct else {}
+            }
+        )
+        return {
+            "quality_table": table_obj,
+            "structure": StructureCollection(protein_id=struct_input.protein_id, structures=passed_structures)
+        }
+
     mean_score = float(df["score"].mean()) if not df.empty else 0.0
     passed = mean_score >= min_thresh
 
@@ -44,15 +79,7 @@ def parse_plddt_filter(raw_data: Any, context: Dict[str, Any]) -> Dict[str, Any]
 
     result = {"quality_table": table_obj}
     if struct_input is not None:
-        if hasattr(struct_input, "structures"):
-            from protflow.types import StructureCollection
-            out_structures = StructureCollection(
-                protein_id=struct_input.protein_id,
-                structures={k: v for k, v in struct_input.structures.items() if passed}
-            )
-            result["structure"] = out_structures
-        else:
-            result["structure"] = struct_input if passed else Structure(protein_id=pid, file_path="")
+        result["structure"] = struct_input if passed else Structure(protein_id=pid, file_path="")
     return result
 
 

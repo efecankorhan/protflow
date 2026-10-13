@@ -1,0 +1,101 @@
+organism,domain,gene_id,gene_symbol,product,length_aa,num_exons,has_introns,intron_count,start,end,localization
+Human herpesvirus 5 strain Merlin,Virus (Betaherpesvirinae),NC_006273_2_g1,M,Membrane glycoprotein (M protein),243,1,False,0,1,729,Cytoplasm
+Human herpesvirus 5 strain Merlin,Virus (Betaherpesvirinae),NC_006273_2_g2,g2,Putative viral protein,310,1,False,0,1367,2299,Cytoplasm
+Human herpesvirus 5 strain Merlin,Virus (Betaherpesvirinae),NC_006273_2_g3,g3,Putative viral protein,59,1,False,0,3589,3768,Cytoplasm
+Human herpesvirus 5 strain Merlin,Virus (Betaherpesvirinae),NC_006273_2_g4,g4,Putative viral protein,51,1,False,0,3943,4098,Extracellular
+Human herpesvirus 5 strain Merlin,Virus (Betaherpesvirinae),NC_006273_2_g5,g5,Putative viral protein,162,1,False,0,4179,4667,Cytoplasm
+Human herpesvirus 5 strain Merlin,Virus (Betaherpesvirinae),NC_006273_2_g6,g6,Putative viral protein,111,1,False,0,6025,6360,Cytoplasm
+Human herpesvirus 5 strain Merlin,Virus (Betaherpesvirinae),NC_006273_2_g7,E,Envelope small membrane protein (E protein),90,1,False,0,7912,8184,Cytoplasm
+Human herpesvirus 5 strain Merlin,Virus (Betaherpesvirinae),NC_006273_2_g8,g8,Putative viral protein,47,1,False,0,8250,8393,Cytoplasm
+Human herpesvirus 5 strain Merlin,Virus (Betaherpesvirinae),NC_006273_2_g9,g9,Putative viral protein,29,1,False,0,8456,8545,Cytoplasm
+Human herpesvirus 5 strain Merlin,Virus (Betaherpesvirinae),NC_006273_2_g10,g10,Putative viral protein,170,1,False,0,8601,9113,Cytoplasm
+Pseudomonas aeruginosa PAO1,Prokaryote (Bacteria),NC_002516_2_g1,g1,Putative coding sequence,514,1,False,0,483,2027,Cytoplasm
+Pseudomonas aeruginosa PAO1,Prokaryote (Bacteria),NC_002516_2_g2,g2,Putative coding sequence,367,1,False,0,2056,3159,Cytoplasm
+Pseudomonas aeruginosa PAO1,Prokaryote (Bacteria),NC_002516_2_g3,g3,Putative coding sequence,369,1,False,0,3169,4278,Cytoplasm
+Pseudomonas aeruginosa PAO1,Prokaryote (Bacteria),NC_002516_2_g4,g4,Putative coding sequence,806,1,False,0,4275,6695,Cytoplasm
+Pseudomonas aeruginosa PAO1,Prokaryote (Bacteria),NC_002516_2_g5,g5,Putative coding sequence,257,1,False,0,7018,7791,Cytoplasm
+Pseudomonas aeruginosa PAO1,Prokaryote (Bacteria),NC_002516_2_g6,g6,Putative coding sequence,178,1,False,0,7803,8339,Cytoplasm
+Pseudomonas aeruginosa PAO1,Prokaryote (Bacteria),NC_002516_2_g7,g7,Putative coding sequence,538,1,False,0,8761,10377,Cytoplasm
+Pseudomonas aeruginosa PAO1,Prokaryote (Bacteria),NC_002516_2_g8,g8,Putative coding sequence,685,1,False,0,10434,12491,Cytoplasm
+Pseudomonas aeruginosa PAO1,Prokaryote (Bacteria),NC_002516_2_g9,g9,Putative coding sequence,315,1,False,0,12488,13435,Cytoplasm
+Pseudomonas aeruginosa PAO1,Prokaryote (Bacteria),NC_002516_2_g10,g10,Putative coding sequence,183,1,False,0,13540,14091,Cytoplasm
+Mycobacterium tuberculosis H37Rv,Prokaryote (Bacteria),NC_000962_3_g1,g1,Putative coding sequence,507,1,False,0,1,1524,Cytoplasm
+Mycobacterium tuberculosis H37Rv,Prokaryote (Bacteria),NC_000962_3_g2,g2,Putative coding sequence,402,1,False,0,2052,3260,Cytoplasm
+Mycobacterium tuberculosis H37Rv,Prokaryote (Bacteria),NC_000962_3_g3,g3,Putative coding sequence,271,1,False,0,3622,4437,Cytoplasm
+Mycobacterium tuberculosis H37Rv,Prokaryote (Bacteria),NC_000962_3_g4,g4,Putative coding sequence,171,1,False,0,4482,4997,Cytoplasm
+Mycobacterium tuberculosis H37Rv,Prokaryote (Bacteria),NC_000962_3_g5,g5,Putative coding sequence,714,1,False,0,5123,7267,Cytoplasm
+Mycobacterium tuberculosis H37Rv,Prokaryote (Bacteria),NC_000962_3_g6,g6,Putative coding sequence,838,1,False,0,7302,9818,Cytoplasm
+Mycobacterium tuberculosis H37Rv,Prokaryote (Bacteria),NC_000962_3_g7,g7,Putative coding sequence,304,1,False,0,9914,10828,Cytoplasm
+Mycobacterium tuberculosis H37Rv,Prokaryote (Bacteria),NC_000962_3_g8,g8,Putative coding sequence,72,1,False,0,11123,11341,Cytoplasm
+Mycobacterium tuberculosis H37Rv,Prokaryote (Bacteria),NC_000962_3_g9,g9,Putative coding sequence,35,1,False,0,11421,11528,Cytoplasm
+Mycobacterium tuberculosis H37Rv,Prokaryote (Bacteria),NC_000962_3_g10,g10,Putative coding sequence,145,1,False,0,11874,12311,Cytoplasm
+Helicobacter pylori 26695,Prokaryote (Bacteria),NC_000915_1_g1,g1,Putative coding sequence,138,1,False,0,217,633,Cytoplasm
+Helicobacter pylori 26695,Prokaryote (Bacteria),NC_000915_1_g2,g2,Putative coding sequence,156,1,False,0,635,1105,Cytoplasm
+Helicobacter pylori 26695,Prokaryote (Bacteria),NC_000915_1_g3,g3,Putative coding sequence,276,1,False,0,1115,1945,Cytoplasm
+Helicobacter pylori 26695,Prokaryote (Bacteria),NC_000915_1_g4,g4,Putative coding sequence,221,1,False,0,1932,2597,Cytoplasm
+Helicobacter pylori 26695,Prokaryote (Bacteria),NC_000915_1_g5,g5,Putative coding sequence,227,1,False,0,2719,3402,Cytoplasm
+Helicobacter pylori 26695,Prokaryote (Bacteria),NC_000915_1_g6,g6,Putative coding sequence,276,1,False,0,3403,4233,Cytoplasm
+Helicobacter pylori 26695,Prokaryote (Bacteria),NC_000915_1_g7,g7,Putative coding sequence,634,1,False,0,5241,7145,Cytoplasm
+Helicobacter pylori 26695,Prokaryote (Bacteria),NC_000915_1_g8,g8,Putative coding sequence,546,1,False,0,7603,9243,Cytoplasm
+Helicobacter pylori 26695,Prokaryote (Bacteria),NC_000915_1_g9,g9,Putative coding sequence,118,1,False,0,9268,9624,Cytoplasm
+Helicobacter pylori 26695,Prokaryote (Bacteria),NC_000915_1_g10,g10,Putative coding sequence,559,1,False,0,9911,11590,Cytoplasm
+Sulfolobus acidocaldarius DSM 639,Prokaryote (Archaea),NC_007181_1_g1,g1,Putative coding sequence,386,1,False,0,101,1261,Cytoplasm
+Sulfolobus acidocaldarius DSM 639,Prokaryote (Archaea),NC_007181_1_g2,g2,Putative coding sequence,111,1,False,0,1294,1629,Cytoplasm
+Sulfolobus acidocaldarius DSM 639,Prokaryote (Archaea),NC_007181_1_g3,g3,Putative coding sequence,279,1,False,0,1665,2504,Cytoplasm
+Sulfolobus acidocaldarius DSM 639,Prokaryote (Archaea),NC_007181_1_g4,g4,Putative coding sequence,185,1,False,0,2553,3110,Cytoplasm
+Sulfolobus acidocaldarius DSM 639,Prokaryote (Archaea),NC_007181_1_g5,g5,Putative coding sequence,239,1,False,0,3049,3768,Cytoplasm
+Sulfolobus acidocaldarius DSM 639,Prokaryote (Archaea),NC_007181_1_g6,g6,Putative coding sequence,83,1,False,0,3801,4052,Cytoplasm
+Sulfolobus acidocaldarius DSM 639,Prokaryote (Archaea),NC_007181_1_g7,g7,Putative coding sequence,93,1,False,0,4138,4419,Extracellular
+Sulfolobus acidocaldarius DSM 639,Prokaryote (Archaea),NC_007181_1_g8,g8,Putative coding sequence,271,1,False,0,4456,5271,Cytoplasm
+Sulfolobus acidocaldarius DSM 639,Prokaryote (Archaea),NC_007181_1_g9,g9,Putative coding sequence,280,1,False,0,5262,6104,Cytoplasm
+Sulfolobus acidocaldarius DSM 639,Prokaryote (Archaea),NC_007181_1_g10,g10,Putative coding sequence,512,1,False,0,6117,7655,Cytoplasm
+Haloferax volcanii DS2,Prokaryote (Archaea),NC_013967_1_g1,g1,Putative coding sequence,564,1,False,0,258,1952,Cytoplasm
+Haloferax volcanii DS2,Prokaryote (Archaea),NC_013967_1_g2,g2,Putative coding sequence,287,1,False,0,2000,2863,Cytoplasm
+Haloferax volcanii DS2,Prokaryote (Archaea),NC_013967_1_g3,g3,Putative coding sequence,533,1,False,0,2942,4543,Cytoplasm
+Haloferax volcanii DS2,Prokaryote (Archaea),NC_013967_1_g4,g4,Putative coding sequence,375,1,False,0,4686,5813,Cytoplasm
+Haloferax volcanii DS2,Prokaryote (Archaea),NC_013967_1_g5,g5,Putative coding sequence,269,1,False,0,5936,6745,Cytoplasm
+Haloferax volcanii DS2,Prokaryote (Archaea),NC_013967_1_g6,g6,Putative coding sequence,142,1,False,0,6854,7282,Cytoplasm
+Haloferax volcanii DS2,Prokaryote (Archaea),NC_013967_1_g7,g7,Putative coding sequence,392,1,False,0,7470,8648,Cytoplasm
+Haloferax volcanii DS2,Prokaryote (Archaea),NC_013967_1_g8,g8,Putative coding sequence,448,1,False,0,8873,10219,Cytoplasm
+Haloferax volcanii DS2,Prokaryote (Archaea),NC_013967_1_g9,g9,Putative coding sequence,219,1,False,0,10248,10907,Cytoplasm
+Haloferax volcanii DS2,Prokaryote (Archaea),NC_013967_1_g10,g10,Putative coding sequence,190,1,False,0,10956,11528,Cytoplasm
+Candida albicans SC5314 chromosome 1,Eukaryote (Fungi),NC_032089_1_g1,g1,Putative coding sequence,45,1,False,0,814,951,Cytoplasm
+Candida albicans SC5314 chromosome 1,Eukaryote (Fungi),NC_032089_1_g2,g2,Putative coding sequence,69,1,False,0,5712,5921,Cytoplasm
+Candida albicans SC5314 chromosome 1,Eukaryote (Fungi),NC_032089_1_g3,g3,Putative coding sequence,116,1,False,0,8530,8880,Cytoplasm
+Candida albicans SC5314 chromosome 1,Eukaryote (Fungi),NC_032089_1_g4,g4,Putative coding sequence,44,1,False,0,9383,9517,Cytoplasm
+Candida albicans SC5314 chromosome 1,Eukaryote (Fungi),NC_032089_1_g5,g5,Putative coding sequence,255,1,False,0,10612,11379,Cytoplasm
+Candida albicans SC5314 chromosome 1,Eukaryote (Fungi),NC_032089_1_g6,g6,Putative coding sequence,78,1,False,0,11539,11775,Cytoplasm
+Candida albicans SC5314 chromosome 1,Eukaryote (Fungi),NC_032089_1_g7,g7,Putative coding sequence,512,1,False,0,12054,13592,Cytoplasm
+Candida albicans SC5314 chromosome 1,Eukaryote (Fungi),NC_032089_1_g8,g8,Putative coding sequence,321,1,False,0,13843,14808,Cytoplasm
+Candida albicans SC5314 chromosome 1,Eukaryote (Fungi),NC_032089_1_g9,g9,Putative coding sequence,283,1,False,0,14801,15652,Cytoplasm
+Candida albicans SC5314 chromosome 1,Eukaryote (Fungi),NC_032089_1_g10,g10,Putative coding sequence,47,1,False,0,16337,16480,Cytoplasm
+Arabidopsis thaliana chromosome 1 sequence,Eukaryote (Plantae),NC_003070_9_g1,g1,Putative coding sequence,136,1,False,0,264,674,Cytoplasm
+Arabidopsis thaliana chromosome 1 sequence,Eukaryote (Plantae),NC_003070_9_g2,g2,Putative coding sequence,40,1,False,0,2262,2384,Cytoplasm
+Arabidopsis thaliana chromosome 1 sequence,Eukaryote (Plantae),NC_003070_9_g3,g3,Putative coding sequence,105,1,False,0,4025,4342,Cytoplasm
+Arabidopsis thaliana chromosome 1 sequence,Eukaryote (Plantae),NC_003070_9_g4,g4,Putative coding sequence,67,1,False,0,4438,4641,Cytoplasm
+Arabidopsis thaliana chromosome 1 sequence,Eukaryote (Plantae),NC_003070_9_g5,g5,Putative coding sequence,121,1,False,0,4805,5170,Cytoplasm
+Arabidopsis thaliana chromosome 1 sequence,Eukaryote (Plantae),NC_003070_9_g6,g6,Putative coding sequence,35,1,False,0,5791,5898,Cytoplasm
+Arabidopsis thaliana chromosome 1 sequence,Eukaryote (Plantae),NC_003070_9_g7,g7,Putative coding sequence,64,1,False,0,6428,6622,Cytoplasm
+Arabidopsis thaliana chromosome 1 sequence,Eukaryote (Plantae),NC_003070_9_g8,g8,Putative coding sequence,80,1,False,0,6623,6865,Cytoplasm
+Arabidopsis thaliana chromosome 1 sequence,Eukaryote (Plantae),NC_003070_9_g9,g9,Putative coding sequence,78,1,False,0,8206,8442,Extracellular
+Arabidopsis thaliana chromosome 1 sequence,Eukaryote (Plantae),NC_003070_9_g10,g10,Putative coding sequence,239,1,False,0,11864,12583,Cytoplasm
+Drosophila melanogaster chromosome X,Eukaryote (Metazoa),NC_004354_4_g1,g1,Putative coding sequence,646,1,False,0,1,1941,Cytoplasm
+Drosophila melanogaster chromosome X,Eukaryote (Metazoa),NC_004354_4_g2,g2,Putative coding sequence,100,1,False,0,5461,5763,Cytoplasm
+Drosophila melanogaster chromosome X,Eukaryote (Metazoa),NC_004354_4_g3,g3,Putative coding sequence,950,1,False,0,6525,9377,Cytoplasm
+Drosophila melanogaster chromosome X,Eukaryote (Metazoa),NC_004354_4_g4,g4,Putative coding sequence,159,1,False,0,10825,11304,Cytoplasm
+Drosophila melanogaster chromosome X,Eukaryote (Metazoa),NC_004354_4_g5,g5,Putative coding sequence,183,1,False,0,14189,14740,Cytoplasm
+Drosophila melanogaster chromosome X,Eukaryote (Metazoa),NC_004354_4_g6,g6,Putative coding sequence,970,1,False,0,15803,18715,Cytoplasm
+Drosophila melanogaster chromosome X,Eukaryote (Metazoa),NC_004354_4_g7,g7,Putative coding sequence,1080,1,False,0,18753,21995,Cytoplasm
+Drosophila melanogaster chromosome X,Eukaryote (Metazoa),NC_004354_4_g8,g8,Putative coding sequence,183,1,False,0,25336,25887,Cytoplasm
+Drosophila melanogaster chromosome X,Eukaryote (Metazoa),NC_004354_4_g9,g9,Putative coding sequence,911,1,False,0,27486,30221,Cytoplasm
+Drosophila melanogaster chromosome X,Eukaryote (Metazoa),NC_004354_4_g10,g10,Putative coding sequence,1080,1,False,0,30259,33501,Cytoplasm
+Danio rerio strain Tuebingen chromosome 1,Eukaryote (Metazoa),NC_007112_7_g1,g1,Putative coding sequence,44,1,False,0,3091,3225,Cytoplasm
+Danio rerio strain Tuebingen chromosome 1,Eukaryote (Metazoa),NC_007112_7_g2,g2,Putative coding sequence,177,1,False,0,3867,4400,Cytoplasm
+Danio rerio strain Tuebingen chromosome 1,Eukaryote (Metazoa),NC_007112_7_g3,g3,Putative coding sequence,257,1,False,0,6227,7000,Cytoplasm
+Danio rerio strain Tuebingen chromosome 1,Eukaryote (Metazoa),NC_007112_7_g4,g4,Putative coding sequence,78,1,False,0,8276,8512,Cytoplasm
+Danio rerio strain Tuebingen chromosome 1,Eukaryote (Metazoa),NC_007112_7_g5,g5,Putative coding sequence,147,1,False,0,10004,10447,Cytoplasm
+Danio rerio strain Tuebingen chromosome 1,Eukaryote (Metazoa),NC_007112_7_g6,g6,Putative coding sequence,146,1,False,0,11804,12244,Cytoplasm
+Danio rerio strain Tuebingen chromosome 1,Eukaryote (Metazoa),NC_007112_7_g7,g7,Putative coding sequence,328,1,False,0,12384,13370,Cytoplasm
+Danio rerio strain Tuebingen chromosome 1,Eukaryote (Metazoa),NC_007112_7_g8,g8,Putative coding sequence,505,1,False,0,13593,15110,Cytoplasm
+Danio rerio strain Tuebingen chromosome 1,Eukaryote (Metazoa),NC_007112_7_g9,g9,Putative coding sequence,389,1,False,0,15289,16458,Cytoplasm
+Danio rerio strain Tuebingen chromosome 1,Eukaryote (Metazoa),NC_007112_7_g10,g10,Putative coding sequence,175,1,False,0,16821,17348,Cytoplasm

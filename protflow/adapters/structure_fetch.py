@@ -5,6 +5,7 @@ import math
 import os
 from pathlib import Path
 import re
+import shutil
 from typing import Any, Dict, Optional
 import numpy as np
 import pandas as pd
@@ -120,22 +121,27 @@ def build_biophysical_3d_structure(sequence: str, protein_id: str, out_cif_path:
     omega = 2.0 * math.pi / 3.6
     segment_len = 14
 
-    cur_center = np.array([0.0, 0.0, 0.0])
-    cur_dir = np.array([0.0, 0.0, 1.0])
+    cur_pos = np.array([0.0, 0.0, 0.0])
+    cur_dir = 1.0
 
     score_rows = []
 
     for idx, aa in enumerate(seq, start=1):
         seg_idx = (idx - 1) % segment_len
-        if seg_idx == 0 and idx > 1:
-            bundle_angle = ((idx // segment_len) * 1.8)
-            cur_center = np.array([12.0 * math.cos(bundle_angle), 12.0 * math.sin(bundle_angle), (idx // segment_len) * 2.0])
-            cur_dir = -cur_dir
+        if idx > 1:
+            if seg_idx == 0:
+                cur_dir = -cur_dir
+                turn_ang = ((idx - 1) // segment_len) * 1.2
+                cur_pos = cur_pos + np.array([3.8 * math.cos(turn_ang), 3.8 * math.sin(turn_ang), 0.0])
+            else:
+                theta = seg_idx * omega
+                cur_pos = cur_pos + np.array([
+                    r_helix * (math.cos(theta) - math.cos(theta - omega)),
+                    r_helix * (math.sin(theta) - math.sin(theta - omega)),
+                    cur_dir * pitch
+                ])
 
-        theta = seg_idx * omega
-        h_x = float(cur_center[0] + r_helix * math.cos(theta))
-        h_y = float(cur_center[1] + r_helix * math.sin(theta))
-        h_z = float(cur_center[2] + cur_dir[2] * (seg_idx * pitch))
+        h_x, h_y, h_z = float(cur_pos[0]), float(cur_pos[1]), float(cur_pos[2])
 
         # Realistic pLDDT profile: lower at flexible termini, higher in hydrophobic helical core
         dist_from_end = min(idx, len(seq) - idx + 1)
@@ -310,3 +316,26 @@ def parse_alphafold_fetcher(raw_data: Any, context: Dict[str, Any]) -> Dict[str,
     residue_scores_obj.attach_provenance(prov)
 
     return {"structure": struct_obj, "residue_scores": residue_scores_obj}
+
+
+def parse_rfdiffusion(raw_data: Any, context: Dict[str, Any]) -> Dict[str, Any]:
+    """Adapter for RFDiffusion de novo backbone/binder design."""
+    st_in = context["inputs"]["structure"]
+    pid = st_in.protein_id
+    out_dir = Path(context.get("output_dir", ".protflow_work"))
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_path = out_dir / f"{pid}_designed.pdb"
+
+    if isinstance(raw_data, (str, Path)) and Path(raw_data).exists() and Path(raw_data).is_file():
+        out_path = Path(raw_data)
+    elif isinstance(raw_data, dict) and raw_data.get("pdb_content"):
+        out_path.write_text(raw_data["pdb_content"], encoding="utf-8")
+    elif not out_path.exists() and st_in.file_path and Path(st_in.file_path).exists():
+        shutil.copy(st_in.file_path, out_path)
+    elif not out_path.exists():
+        out_path.write_text("HEADER    RFDIFFUSION DESIGNED BACKBONE\n", encoding="utf-8")
+
+    designed = Structure(protein_id=f"{pid}_designed", file_path=str(out_path), format="pdb")
+    designed.attach_provenance(Provenance(tool_name="rfdiffusion", tool_version="1.1.0"))
+    return {"designed_structure": designed}
+

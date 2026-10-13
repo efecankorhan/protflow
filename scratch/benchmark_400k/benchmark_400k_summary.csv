@@ -1,0 +1,11 @@
+organism,accession,phylum,ecological_niche,gc_regime,actual_len_bp,gc_pct,curated_ncbi_genes,protflow_predicted_genes,exact_matches_tp,exact_recall_pct,exact_precision_pct,locus_stop_matches_tp,locus_recovery_pct,coding_density_pct,start_atg_pct,start_gtg_pct,start_ttg_pct,secreted_pct,intracellular_pct
+Leptospira interrogans serovar Copenhageni str. Fiocruz L1-130 chromosome I,NC_005823.1,Deinococcota,Hot springs / Radiation resistant,High GC,400000,34.3,354,342,294,83.1,86.0,323,91.2,77.1,83.9,3.5,12.6,12.9,87.1
+Metallosphaera sedula DSM 5348,NC_009440.1,Bacillota,Hyperthermophile / Cellulolytic anaerobe,Low GC,400000,45.8,444,460,418,94.1,90.9,444,100.0,92.3,78.9,8.3,12.8,7.4,92.6
+Corynebacterium diphtheriae NCTC 13129,NC_002935.2,Chlorobiota,Green sulfur anoxygenic phototroph,Moderate GC,400000,55.9,401,406,339,84.5,83.5,378,94.3,89.0,81.8,15.8,2.5,4.7,95.3
+Clostridium acetobutylicum ATCC 824,NC_003030.1,Bacillota,Solventogenic obligate anaerobe,Low GC,400000,32.5,342,387,330,96.5,85.3,337,98.5,79.2,74.9,9.8,15.2,9.3,90.7
+Nostoc sp. PCC 7120 = FACHB-418,NC_003272.1,Cyanobacteriota,Filamentous nitrogen-fixing phototroph,Low/Moderate GC,400000,41.5,338,349,316,93.5,90.5,333,98.5,81.6,87.1,9.5,3.4,8.3,91.7
+Leptospira interrogans serovar Lai str. 56601 chromosome I,NC_004342.2,Bacteroidota,Anaerobic asaccharolytic mucosal pathogen,Moderate GC,400000,34.3,351,339,296,84.3,87.3,322,91.7,77.1,83.8,4.1,12.1,12.7,87.3
+Nitrosomonas europaea ATCC 19718,NC_004757.1,Pseudomonadota (Alphaproteobacteria),Purple non-sulfur phototroph / Aromatic degrader,High GC,400000,50.5,366,375,323,88.3,86.1,352,96.2,88.0,91.5,5.6,2.7,4.5,95.5
+Aliivibrio fischeri ES114 chromosome I,NC_006840.2,Bacillota,Obligate commensal thermophile,High GC,400000,39.4,356,361,343,96.3,95.0,352,98.9,86.5,91.7,7.2,1.1,5.5,94.5
+Corynebacterium jeikeium K411,NC_007164.1,Campylobacterota,Avian coastal thermotolerant pathogen,Low GC,400000,61.7,333,333,287,86.2,86.2,327,98.2,89.5,80.8,17.4,1.5,3.9,96.1
+Streptococcus pyogenes MGAS5005 chromosome,NC_007297.1,Pseudomonadota (Alphaproteobacteria),Acid mine drainage / Iron-reducing acidophile,High GC,400000,39.3,405,386,347,85.7,89.9,373,92.1,80.0,88.1,5.4,6.5,5.2,94.8

@@ -9,6 +9,8 @@ outputs:
   annotations: Annotation
 parameters:
   species: generic
+  is_prokaryote: true
+  min_len_aa: 25
 execution:
   type: local
   command: "augustus --species={parameters.species} {inputs.genome.file_path}"

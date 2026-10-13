@@ -104,7 +104,7 @@ class ProtFlowUIHandler(BaseHTTPRequestHandler):
         origin = self.headers.get("Origin")
         if origin:
             parsed_origin = urllib.parse.urlparse(origin)
-            if parsed_origin.hostname not in ("127.0.0.1", "localhost", None):
+            if parsed_origin.hostname not in ("127.0.0.1", "localhost", "::1", "0.0.0.0", None):
                 self._send_json({"error": "Forbidden: Cross-origin request blocked"}, status=403)
                 return
 
@@ -700,16 +700,12 @@ class ProtFlowUIHandler(BaseHTTPRequestHandler):
                 })
 
             p_obj = state.get("priority_table")
-            p_df = p_obj.df if (p_obj and hasattr(p_obj, "df")) else pd.DataFrame([
-                {"protein_id": pid, "final_priority_score": 0.85, "structure_quality": "HIGH", "pocket_score": 0.82, "pocket_volume": 420.0, "status": "CANDIDATE"}
-            ])
+            p_df = p_obj.df if (p_obj and hasattr(p_obj, "df")) else pd.DataFrame()
             pockets_obj = state.get("pockets")
-            pockets_df = pockets_obj.df if (pockets_obj and hasattr(pockets_obj, "df")) else pd.DataFrame([
-                {"protein_id": pid, "pocket_id": "pkt_1", "volume": 420.0, "druggability_score": 0.82, "residue_ids": [12, 14, 18, 22], "residues": "A:24,A:25,A:55"}
-            ])
+            pockets_df = pockets_obj.df if (pockets_obj and hasattr(pockets_obj, "df")) else pd.DataFrame()
 
-            # Generate wet lab alanine mutants for top candidates
-            mutants_df = generate_alanine_mutants(p_df, pockets_df, top_n=5)
+            # Generate wet lab alanine mutants for top candidates if tables exist
+            mutants_df = generate_alanine_mutants(p_df, pockets_df, top_n=5) if not p_df.empty and not pockets_df.empty else pd.DataFrame()
 
             self._send_json({
                 "status": "SUCCESS",

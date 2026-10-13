@@ -33,8 +33,8 @@ def parse_subcellular_filter(raw_data: Any, context: Dict[str, Any]) -> Dict[str
     rows = []
     passed_items = []
     dropped_count = 0
-    # Standard biochemical hydrophobic core (L, I, V, F, W, M, A); G is neutral/helix-breaker
-    hydrophobic = set("LIVFWMA")
+    # Literature-standard secretory hydrophobic core (L, I, V, F, W, M); A/G excluded to avoid GC-bias false positives
+    hydrophobic = set("LIVFWM")
 
     for seq_obj in items:
         seq = seq_obj.sequence.upper()
@@ -43,7 +43,7 @@ def parse_subcellular_filter(raw_data: Any, context: Dict[str, Any]) -> Dict[str
         n_hydro_count = sum(1 for aa in n_term if aa in hydrophobic)
         hydro_fraction = n_hydro_count / max(len(n_term), 1)
 
-        is_secreted = hydro_fraction > 0.60
+        is_secreted = (len(seq) >= 20) and (hydro_fraction >= 0.55)
         loc = "Extracellular" if is_secreted else "Cytoplasm"
         is_intracellular = not is_secreted
         conf = 0.92 if is_intracellular else 0.85

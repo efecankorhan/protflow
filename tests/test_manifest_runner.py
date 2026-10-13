@@ -289,4 +289,85 @@ def test_local_command_path_with_spaces_quoting(tmp_path):
     assert raw is not None
 
 
+def test_rfdiffusion_manifest_contract(tmp_path):
+    root = Path(__file__).resolve().parents[1]
+    m_path = root / "manifests" / "09_rfdiffusion.yaml"
+    m = Manifest.from_yaml(m_path)
+    assert m.name == "rfdiffusion"
+    assert "structure" in m.inputs
+    assert "designed_structure" in m.outputs
+
+    st_file = tmp_path / "target.pdb"
+    st_file.write_text("ATOM      1  CA  ALA A   1       1.0   2.0   3.0  1.00 85.00           C\n", encoding="utf-8")
+    st = Structure(protein_id="TARGET", file_path=str(st_file), format="pdb")
+
+    runner = Runner(cache_dir=tmp_path / "cache", enable_cache=False)
+    out = runner.run(
+        m,
+        inputs={"structure": st},
+        parameters={"allow_synthetic_fallback": True},
+        output_dir=tmp_path / "rf_out"
+    )
+    assert "designed_structure" in out
+    assert isinstance(out["designed_structure"], Structure)
+    assert Path(out["designed_structure"].file_path).exists()
+
+
+def test_surface_sasa_and_pockets_multi_model_nmr(tmp_path):
+    from protflow.adapters.surface import parse_surface_sasa
+    from protflow.adapters.pockets import _detect_cavities_from_structure
+
+    pdb_file = tmp_path / "ensemble.pdb"
+    pdb_file.write_text(
+        "MODEL        1\n"
+        "ATOM      1  CA  ALA A   1       1.0   2.0   3.0  1.00 85.00           C\n"
+        "ENDMDL\n"
+        "MODEL        2\n"
+        "ATOM      1  CA  ALA A   1       1.5   2.5   3.5  1.00 85.00           C\n"
+        "ENDMDL\n"
+        "END\n",
+        encoding="utf-8"
+    )
+    st = Structure(protein_id="ENS", file_path=str(pdb_file), format="pdb")
+
+    # SASA should only count model 1
+    sasa_res = parse_surface_sasa(None, {"inputs": {"structure": st}})
+    assert sasa_res["sasa_table"].df["residue_count"].iloc[0] == 1
+
+    # Pocket detector should process model 1 without error
+    pocket = _detect_cavities_from_structure(st, "p2rank")
+    assert pocket.protein_id == "ENS"
+    assert len(pocket.df) == 1
+
+
+def test_cache_invalidation_on_deleted_structure_file(tmp_path):
+    runner = Runner(cache_dir=tmp_path / "cache", enable_cache=True)
+    m = Manifest.from_dict({
+        "name": "rf_cache_test",
+        "version": "1.0",
+        "inputs": {"structure": "Structure"},
+        "outputs": {"designed_structure": "Structure"},
+        "execution": {"type": "local", "command": "echo {param_allow_synthetic_fallback}"},
+        "adapter": "protflow.adapters.structure_fetch:parse_rfdiffusion"
+    })
+    target_pdb = tmp_path / "in.pdb"
+    target_pdb.write_text("ATOM      1  CA  ALA A   1       1.0   2.0   3.0  1.00 85.00           C\n", encoding="utf-8")
+    st = Structure(protein_id="P1", file_path=str(target_pdb), format="pdb")
+
+    # Run 1: populates cache
+    out1 = runner.run(m, {"structure": st}, parameters={"allow_synthetic_fallback": True}, output_dir=tmp_path / "out1")
+    designed_path = Path(out1["designed_structure"].file_path)
+    assert designed_path.exists()
+
+    # Simulate scratch directory purge: delete output file
+    designed_path.unlink()
+    assert not designed_path.exists()
+
+    # Run 2: cache points to deleted file, runner should auto-invalidate cache and recompute
+    out2 = runner.run(m, {"structure": st}, parameters={"allow_synthetic_fallback": True}, output_dir=tmp_path / "out2")
+    assert Path(out2["designed_structure"].file_path).exists()
+
+
+
+
 

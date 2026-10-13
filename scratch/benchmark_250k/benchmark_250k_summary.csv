@@ -1,0 +1,11 @@
+organism,accession,phylum,length_bp,gc_pct,ncbi_curated_genes,protflow_predicted_genes,true_positive_matches,false_negatives,false_positives,recall_pct,precision_pct,coding_density_pct,atg_pct,gtg_pct,ttg_pct,secreted_pct,intracellular_pct
+Escherichia coli str. K-12 substr. MG1655,NC_000913.3,Gammaproteobacteria,250000,51.9,225,221,204,21,17,90.7,92.3,88.3,86.0,11.3,1.8,5.4,94.6
+Bacillus subtilis subsp. subtilis str. 168 complete genome,NC_000964.3,Bacillota (Firmicutes),250000,43.9,229,251,221,8,30,96.5,88.0,78.9,80.1,11.6,8.0,6.8,93.2
+Pseudomonas aeruginosa PAO1,NC_002516.2,Gammaproteobacteria,250000,67.3,220,226,204,16,22,92.7,90.3,89.4,91.2,7.1,1.8,3.5,96.5
+Staphylococcus aureus subsp. aureus NCTC 8325 chromosome,NC_007795.1,Bacillota (Staphylococcaceae),250000,33.7,207,200,178,29,22,86.0,89.0,86.7,87.5,5.0,7.5,13.0,87.0
+Mycobacterium tuberculosis H37Rv,NC_000962.3,Actinomycetota,250000,64.9,214,222,181,33,41,84.6,81.5,91.5,70.7,21.6,7.7,3.2,96.8
+Helicobacter pylori 26695,NC_000915.1,Campylobacterota,249991,39.5,229,236,206,23,30,90.0,87.3,89.6,83.5,5.9,10.2,9.3,90.7
+Vibrio cholerae O1 biovar El Tor str. N16961 chromosome I,NC_002505.1,Vibrionaceae,249996,48.3,223,219,206,17,13,92.4,94.1,84.3,86.8,8.7,4.6,5.5,94.5
+Listeria monocytogenes EGD-e chromosome,NC_003210.1,Bacillota (Listeriaceae),250000,38.2,228,229,223,5,6,97.8,97.4,85.7,80.8,8.7,10.5,11.8,88.2
+Thermus thermophilus HB8 chromosome 1,NC_006461.1,Deinococcota,250000,69.3,263,265,247,16,18,93.9,93.2,93.1,75.5,22.6,1.9,4.9,95.1
+Streptomyces coelicolor A3(2),NC_003888.3,Actinomycetota,250000,70.8,231,233,169,62,64,73.2,72.5,81.9,68.2,30.5,1.3,2.1,97.9

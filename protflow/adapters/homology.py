@@ -44,10 +44,17 @@ def resolve_target(target: str) -> Path:
         tmp_gz = db / "uniprot_sprot.fasta.gz.tmp"
         tmp_fa = db / "uniprot_sprot.fasta.tmp"
         try:
-            urllib.request.urlretrieve(SWISSPROT_URL, tmp_gz)
+            req = urllib.request.Request(SWISSPROT_URL, headers={"User-Agent": "ProtFlow/1.0"})
+            with urllib.request.urlopen(req, timeout=30) as resp, open(tmp_gz, "wb") as f_out:
+                shutil.copyfileobj(resp, f_out)
             with gzip.open(tmp_gz, "rb") as src, open(tmp_fa, "wb") as dst:
                 shutil.copyfileobj(src, dst)
             tmp_fa.replace(fa)
+        except Exception as e:
+            raise RuntimeError(
+                f"Swiss-Prot veritabani indirilemedi ({SWISSPROT_URL}): {e}. "
+                "Lutfen 'target_fasta' parametresine yerel bir FASTA dosyasi verin veya ag baglantinizi kontrol edin."
+            ) from e
         finally:
             if tmp_gz.exists():
                 tmp_gz.unlink()

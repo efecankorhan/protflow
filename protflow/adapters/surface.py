@@ -24,8 +24,8 @@ def parse_surface_sasa(raw_data: Any, context: Dict[str, Any]) -> Dict[str, Any]
     hydro_count = 0
     hydro_resnames = {"ALA", "VAL", "ILE", "LEU", "MET", "PHE", "TYR", "TRP"}
 
-    for model in st:
-        for chain in model:
+    if len(st) > 0:
+        for chain in st[0]:
             for res in chain:
                 if res.is_water():
                     continue

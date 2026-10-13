@@ -16,4 +16,4 @@ execution:
   timeout: 300
   headers:
     Authorization: "Bearer ${GPU_SERVER_API_KEY}"
-adapter: protflow.adapters.structure_fetch:parse_alphafold_fetcher
+adapter: protflow.adapters.structure_fetch:parse_rfdiffusion

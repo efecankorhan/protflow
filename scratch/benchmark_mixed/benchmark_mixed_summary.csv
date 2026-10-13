@@ -1,0 +1,11 @@
+organism,accession,domain,phylum,is_prokaryote,length_bp,gc_pct,num_genes,curated_genes,locus_matches,locus_recall_pct,exact_matches,exact_recall_pct,exact_precision_pct,stop_matches,stop_recall_pct,curated_spliced_genes,curated_total_introns,pred_spliced_genes,pred_total_introns,mean_exons_per_gene,secreted_pct,intracellular_pct
+Escherichia coli str. K-12 substr. MG1655,NC_000913.3,Prokaryote (Bacteria),Gammaproteobacteria,True,250000,51.9,221,225,216,96.0,204,90.7,92.3,214,95.1,0,0,0,0,1.0,5.4,94.6
+Bacillus subtilis subsp. subtilis str. 168 complete genome,NC_000964.3,Prokaryote (Bacteria),Bacillota (Gram+),True,250000,43.9,251,229,226,98.7,221,96.5,88.0,226,98.7,0,0,0,0,1.0,6.8,93.2
+Archaeoglobus fulgidus DSM 4304,NC_000917.1,Prokaryote (Archaea),Methanocaldococcaceae (Thermophile),True,250000,48.5,287,277,272,98.2,255,92.1,88.9,268,96.8,0,0,0,0,1.0,7.3,92.7
+Thermotoga maritima MSB8,NC_000853.1,Prokaryote (Bacteria),Thermotogota (Hyperthermophile),True,250000,46.6,230,229,228,99.6,218,95.2,94.8,226,98.7,0,0,0,0,1.0,18.3,81.7
+Streptomyces coelicolor A3(2),NC_003888.3,Prokaryote (Bacteria),Actinomycetota (High GC),True,250000,70.8,233,231,216,93.5,169,73.2,72.5,205,88.7,0,0,0,0,1.0,2.1,97.9
+Saccharomyces cerevisiae S288C chromosome I,NC_001133.9,Eukaryote (Fungi),Ascomycota (Budding Yeast),False,230218,39.3,160,94,87,92.6,68,72.3,42.5,85,90.4,3,3,0,0,1.0,18.1,81.9
+Saccharomyces cerevisiae S288C chromosome II,NC_001134.8,Eukaryote (Fungi),Ascomycota (Budding Yeast),False,250000,38.5,127,118,104,88.1,88,74.6,69.3,104,88.1,12,12,0,0,1.0,3.9,96.1
+Plasmodium falciparum 3D7 genome assembly,NC_004325.2,Eukaryote (Protista),Apicomplexa (Malaria Parasite),False,250000,21.1,139,49,48,98.0,14,28.6,10.1,43,87.8,32,61,0,0,1.0,20.9,79.1
+Schizosaccharomyces pombe strain 972h- genome assembly,NC_003424.3,Eukaryote (Fungi),Ascomycota (Fission Yeast),False,250000,35.3,140,103,100,97.1,71,68.9,50.7,91,88.3,17,25,0,0,1.0,12.1,87.9
+Caenorhabditis elegans chromosome I,NC_003279.8,Eukaryote (Metazoa),Nematoda (Animal / Roundworm),False,250000,36.5,209,60,47,78.3,0,0.0,0.0,7,11.7,58,362,0,0,1.0,4.8,95.2
