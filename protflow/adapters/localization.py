@@ -15,9 +15,12 @@ def parse_subcellular_filter(raw_data: Any, context: Dict[str, Any]) -> Dict[str
     Scores N-terminal hydrophobic segment to detect signal peptides / transmembrane domains.
     Supports single Sequence and SequenceCollection, passing through intracellular proteins.
     """
-    seq_input = context["inputs"].get("proteins") or context["inputs"]["protein"]
+    seq_input = context["inputs"].get("proteins") or context["inputs"].get("protein")
 
-    if isinstance(seq_input, Sequence):
+    if not seq_input:
+        items = []
+        is_collection = False
+    elif isinstance(seq_input, Sequence):
         items = [seq_input]
         is_collection = False
     elif hasattr(seq_input, "sequences"):
@@ -30,7 +33,8 @@ def parse_subcellular_filter(raw_data: Any, context: Dict[str, Any]) -> Dict[str
     rows = []
     passed_items = []
     dropped_count = 0
-    hydrophobic = set("LIVFWMAG")
+    # Standard biochemical hydrophobic core (L, I, V, F, W, M, A); G is neutral/helix-breaker
+    hydrophobic = set("LIVFWMA")
 
     for seq_obj in items:
         seq = seq_obj.sequence.upper()
@@ -72,15 +76,16 @@ def parse_subcellular_filter(raw_data: Any, context: Dict[str, Any]) -> Dict[str
         }
     )
 
+    pid = getattr(seq_input, "protein_id", "NONE") if seq_input else "NONE"
     if is_collection:
         from protflow.types import SequenceCollection
         out_collection = SequenceCollection(
-            protein_id=seq_input.protein_id,
+            protein_id=pid,
             sequences={s.protein_id: s for s in passed_items}
         )
         return {"proteins": out_collection, "filter_table": table_obj}
     else:
-        out_prot = passed_items[0] if passed_items else Sequence(protein_id=seq_input.protein_id, sequence="", description="DROPPED_BY_FILTER")
+        out_prot = passed_items[0] if passed_items else Sequence(protein_id=pid, sequence="", description="DROPPED_BY_FILTER")
         return {"protein": out_prot, "filter_table": table_obj}
 
 

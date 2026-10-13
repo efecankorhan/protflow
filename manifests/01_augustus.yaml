@@ -1,0 +1,15 @@
+name: augustus
+version: "3.5.0"
+description: Eukaryotic and prokaryotic gene prediction using AUGUSTUS (GHMM based gene model with intron/exon, CDS, and translated protein detection)
+inputs:
+  genome: Sequence
+outputs:
+  proteins: SequenceCollection
+  genes: Table
+  annotations: Annotation
+parameters:
+  species: generic
+execution:
+  type: local
+  command: "augustus --species={parameters.species} {inputs.genome.file_path}"
+adapter: protflow.adapters.genomics:parse_augustus

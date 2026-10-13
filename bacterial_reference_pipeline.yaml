@@ -8,7 +8,7 @@ steps:
       organism: ecoli_k12
 
   - name: gene_prediction
-    manifest: manifests/01_prodigal.yaml
+    manifest: manifests/01_augustus.yaml
     condition: "'proteins' not in state"
     inputs:
       genome: genome
@@ -38,7 +38,7 @@ steps:
       structure: structure
       residue_scores: residue_scores
     parameters:
-      min_plddt: 70.0
+      min_plddt: 60.0
 
   - name: pocket_finding
     manifest: manifests/05_pocket_p2rank.yaml

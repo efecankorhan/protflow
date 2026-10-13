@@ -48,6 +48,20 @@ def test_bacterial_reference_pipeline_end_to_end(tmp_path, bacterial_genome):
     assert "residue_scores" in final_state
     assert isinstance(final_state["residue_scores"], ResidueScore)
 
+    # Validate true 3D spatial extent (not flat 1-D on x-axis with y=0, z=0)
+    st = final_state["structure"].to_gemmi_structure()
+    ca_atoms = [atom for model in st for chain in model for res in chain for atom in res if atom.name == "CA"]
+    assert len(ca_atoms) > 0
+    ys = [atom.pos.y for atom in ca_atoms]
+    zs = [atom.pos.z for atom in ca_atoms]
+    assert any(abs(y) > 0.1 for y in ys), "Structure Y-coordinates must not be all 0 (1-D flat line)"
+    assert any(abs(z) > 0.1 for z in zs), "Structure Z-coordinates must not be all 0 (1-D flat line)"
+
+    # Validate realistic non-flat residue pLDDT variation
+    score_df = final_state["residue_scores"].df
+    assert not score_df.empty
+    assert score_df["score"].std() > 0.0, "pLDDT residue scores must have variance across residues, not flat constant"
+
     # 4. pLDDT Quality filter
     assert "quality_table" in final_state
     quality_df = final_state["quality_table"].df
@@ -117,13 +131,34 @@ def test_single_line_pocket_node_interchangeability(tmp_path, bacterial_genome):
     assert final_state["priority_table"].df["pocket_score"].iloc[0] > 0.0
 
 
+def test_single_line_gene_prediction_node_interchangeability(tmp_path, bacterial_genome):
+    """
+    Measures the core principle:
+    Swapping a gene predictor (augustus <-> prodigal) is literally a 1-line configuration change.
+    """
+    pipeline_yaml = Path(__file__).parent.parent / "bacterial_reference_pipeline.yaml"
+    runner = Runner(cache_dir=tmp_path / "cache", enable_cache=True)
+    pipeline = Pipeline.from_yaml(pipeline_yaml, runner=runner)
+
+    gene_step = next(s for s in pipeline.steps if s.name == "gene_prediction")
+    assert "augustus" in gene_step.manifest_path
+
+    # Swap in 1 line
+    gene_step.manifest_path = "manifests/01_prodigal.yaml"
+
+    final_state = pipeline.run({"genome": bacterial_genome})
+    assert "protein" in final_state
+    assert final_state["genes"].provenance.tool_name == "prodigal"
+    assert "structure" in final_state
+
+
 def test_pipeline_export_to_snakemake_and_nextflow(tmp_path):
     pipeline_yaml = Path(__file__).parent.parent / "bacterial_reference_pipeline.yaml"
     pipeline = Pipeline.from_yaml(pipeline_yaml)
 
     # 1. Snakemake export
     smk = pipeline.export_snakemake()
-    assert "rule prodigal:" in smk
+    assert ("rule prodigal:" in smk or "rule augustus:" in smk)
     assert "rule alphafold_db:" in smk
     assert "rule p2rank:" in smk
     assert "rule prioritizer:" in smk
@@ -131,7 +166,7 @@ def test_pipeline_export_to_snakemake_and_nextflow(tmp_path):
     # 2. Nextflow export
     nf = pipeline.export_nextflow()
     assert "nextflow.enable.dsl=2" in nf
-    assert "process PRODIGAL {" in nf
+    assert ("process PRODIGAL {" in nf or "process AUGUSTUS {" in nf)
     assert "process ALPHAFOLD_DB {" in nf
     assert "process P2RANK {" in nf
     assert "process PRIORITIZER {" in nf
@@ -231,3 +266,114 @@ def test_collection_all_secreted_dropped():
     assert p["input_count"] == 2
     assert p["passed_count"] == 0
     assert p["dropped_count"] == 2
+
+
+@pytest.mark.parametrize("org_id", [
+    "ecoli_k12",
+    "brachionus_plicatilis",
+    "sars_cov_2",
+])
+def test_multi_organism_pipeline_execution(tmp_path, org_id):
+    """
+    Validates end-to-end pipeline execution across diverse biological kingdoms:
+    - Bacteria (E. coli K-12)
+    - Eukaryota (Brachionus plicatilis)
+    - Viruses (SARS-CoV-2)
+    Verifies gene prediction, protein selection, true 3D tertiary structure folding,
+    pocket detection, and prioritization score across all domains of life.
+    """
+    pipeline_yaml = Path(__file__).parent.parent / "bacterial_reference_pipeline.yaml"
+    runner = Runner(cache_dir=tmp_path / f"cache_{org_id}", enable_cache=True)
+    pipeline = Pipeline.from_yaml(pipeline_yaml, runner=runner)
+    pipeline.steps[0].parameters["organism"] = org_id
+
+    final_state = pipeline.run({})
+
+    assert "protein" in final_state
+    protein = final_state["protein"]
+    assert len(protein.sequence) > 10
+
+    assert "structure" in final_state
+    st = final_state["structure"].to_gemmi_structure()
+    ca_atoms = [atom for model in st for chain in model for res in chain for atom in res if atom.name == "CA"]
+    assert len(ca_atoms) > 0
+    ys = [atom.pos.y for atom in ca_atoms]
+    zs = [atom.pos.z for atom in ca_atoms]
+    assert any(abs(y) > 0.1 for y in ys), f"{org_id}: Y coordinates must not be all 0 (1-D line)"
+    assert any(abs(z) > 0.1 for z in zs), f"{org_id}: Z coordinates must not be all 0 (1-D line)"
+
+    assert "residue_scores" in final_state
+    scores = final_state["residue_scores"].df
+    assert not scores.empty
+    assert scores["score"].std() > 0.0, f"{org_id}: residue pLDDT scores must have variance across residues"
+
+    assert "pockets" in final_state
+    assert not final_state["pockets"].df.empty
+    assert final_state["pockets"].df["score"].iloc[0] > 0.0
+
+    assert "priority_table" in final_state
+    p_df = final_state["priority_table"].df
+    assert 0.0 <= p_df["final_priority_score"].iloc[0] <= 1.0
+
+
+def test_random_organism_pipeline(tmp_path):
+    """
+    Randomly samples an organism from the available organism library
+    to continuously test pipeline robustness against variable biological data.
+    """
+    import random
+    organisms_dir = Path(__file__).parent.parent / "organisms"
+    available = [p.stem for p in organisms_dir.glob("*.json")]
+    assert len(available) >= 3
+    chosen_org = random.choice(available)
+
+    pipeline_yaml = Path(__file__).parent.parent / "bacterial_reference_pipeline.yaml"
+    runner = Runner(cache_dir=tmp_path / f"cache_random_{chosen_org}", enable_cache=True)
+    pipeline = Pipeline.from_yaml(pipeline_yaml, runner=runner)
+    pipeline.steps[0].parameters["organism"] = chosen_org
+
+    final_state = pipeline.run({})
+    assert "structure" in final_state
+    assert "priority_table" in final_state
+    assert 0.0 <= final_state["priority_table"].df["final_priority_score"].iloc[0] <= 1.0
+
+
+def test_generic_id_uniprot_resolution_safety():
+    from protflow.adapters.structure_fetch import resolve_uniprot_afdb
+    # Generic IDs like 'g1', 'orf1', 'gene_0001' must not falsely match random UniProt entries
+    assert resolve_uniprot_afdb("g1") is None
+    assert resolve_uniprot_afdb("orf1") is None
+    assert resolve_uniprot_afdb("gene_0001") is None
+
+
+def test_negative_strand_cds_reverse_complement(tmp_path):
+    from protflow.adapters.genomics import parse_augustus, translate_dna
+    # Synthetic DNA with a negative strand ORF (TAA ... CAT on forward, so ATG ... TTA on reverse)
+    # Forward: 5'-TTA GTT GAT GTA CAT-3' -> Reverse: 5'-ATG TAC ATC AAC TAA-3' (M-Y-I-N-*)
+    dna = "TTAGTTGATGTACAT"
+    seq_obj = Sequence(protein_id="NEG_TEST", sequence=dna)
+    gtf_raw = (
+        "NEG_TEST\tAUGUSTUS\tgene\t1\t15\t0.99\t-\t.\tg1\n"
+        "NEG_TEST\tAUGUSTUS\ttranscript\t1\t15\t0.99\t-\t.\tg1.t1\n"
+        "NEG_TEST\tAUGUSTUS\tCDS\t1\t15\t0.99\t-\t0\ttranscript_id \"g1.t1\"; gene_id \"g1\";\n"
+        "# protein sequence = [MYIN]\n"
+    )
+    out = parse_augustus(gtf_raw, {"inputs": {"genome": seq_obj}, "output_dir": str(tmp_path)})
+    genes_df = out["genes"].df
+    assert not genes_df.empty
+    row = genes_df.iloc[0]
+    assert row["strand"] == "-"
+    # cds_nt must be reverse-complemented: ATG TAC ATC AAC TAA (starts with ATG)
+    assert row["cds_nt"] == "ATGTACATCAACTAA"
+    assert row["start_codon"] == "ATG"
+    assert translate_dna(row["cds_nt"][:12]) == "MYIN"
+
+
+def test_empty_sequence_localization_filter():
+    from protflow.adapters.localization import parse_subcellular_filter
+    # Empty inputs must not raise KeyError or AttributeError
+    res = parse_subcellular_filter(None, {"inputs": {}})
+    assert res["protein"].sequence == ""
+    assert res["filter_table"].df.empty
+
+
