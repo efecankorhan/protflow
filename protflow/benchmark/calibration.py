@@ -44,7 +44,7 @@ class CalibrationTable:
         # 1. Ensure score column exists, populate prior if absent
         if score_col not in df.columns:
             df = df.copy()
-            df[score_col] = np.where(df[label_col] == True, 0.80, 0.40)
+            df[score_col] = np.where(df[label_col].astype(bool), 0.80, 0.40)
 
         # Global calibration bins: [0.0-0.5, 0.5-0.7, 0.7-0.85, 0.85-1.0]
         bin_edges = [0.0, 0.50, 0.70, 0.85, 1.00]
@@ -56,8 +56,9 @@ class CalibrationTable:
             cbins = self._calculate_bins(grp, score_col, label_col, bin_edges)
             self.class_calibrations[ec_cls] = cbins
 
-            tp = int((grp[label_col] == True).sum())
-            fp = int((grp[label_col] == False).sum())
+            labels = grp[label_col].astype(bool)
+            tp = int(labels.sum())
+            fp = int((~labels).sum())
             mean_score = float(grp[score_col].mean())
             precision = tp / max(tp + fp, 1) if tp + fp > 0 else 0.0
 
@@ -91,8 +92,9 @@ class CalibrationTable:
             low, high = edges[i], edges[i + 1]
             mask = (df[score_col] >= low) & (df[score_col] <= high if i == len(edges) - 2 else df[score_col] < high)
             subset = df[mask]
-            tp = int((subset[label_col] == True).sum())
-            fp = int((subset[label_col] == False).sum())
+            sub_labels = subset[label_col].astype(bool)
+            tp = int(sub_labels.sum())
+            fp = int((~sub_labels).sum())
             total = tp + fp
             # Laplace smoothing (empirical bayes)
             prob = float((tp + 1.0) / (total + 2.0)) if total > 0 else float(low + high) / 2.0

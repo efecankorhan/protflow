@@ -6,14 +6,11 @@ such as cryptic splice sites, internal Shine-Dalgarno pauses, and restriction si
 """
 
 from __future__ import annotations
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 import math
-import re
 import pandas as pd
 
 from protflow.types import Sequence, Table, Provenance
-from protflow.adapters.residue import AA1_TO_3
 
 # Standard Codon Usage Frequencies per Host (frequency of codon given amino acid)
 # Sources: Kazusa Codon Usage Database & E. coli B/K-12 highly expressed genes

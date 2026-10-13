@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, Union
 import json
 import pandas as pd
-from protflow.types import Pocket, ResidueScore, Structure, Sequence, Table
+from protflow.types import Pocket
 
 
 def parse_dummy_pocket_finder(raw_data: Union[str, Dict[str, Any]], context: Dict[str, Any]) -> Dict[str, Any]:
@@ -41,32 +41,3 @@ def parse_dummy_pocket_finder(raw_data: Union[str, Dict[str, Any]], context: Dic
 
     df = pd.DataFrame(rows)
     return {"pockets": Pocket(protein_id=protein_id, df=df)}
-
-
-def parse_alphafold_db_http_response(raw_data: Union[str, Dict[str, Any]], context: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Adapter that parses AlphaFold DB API response to extract structure URL and pLDDT residue scores.
-    """
-    protein_id = context.get("protein_id", "unknown")
-    if isinstance(raw_data, str):
-        data = json.loads(raw_data)
-    else:
-        data = raw_data
-
-    # AFDB response is a list of entries
-    entry = data[0] if isinstance(data, list) and data else data
-    cif_url = entry.get("cifUrl", "")
-    mean_plddt = float(entry.get("globalMetricValue", 0.0))
-
-    # Return structure record and metadata table
-    meta_df = pd.DataFrame([{
-        "protein_id": protein_id,
-        "cif_url": cif_url,
-        "global_plddt": mean_plddt,
-        "gene": entry.get("gene", ""),
-        "organism": entry.get("organismScientificName", "")
-    }])
-
-    return {
-        "structure_meta": Table(protein_id=protein_id, df=meta_df)
-    }

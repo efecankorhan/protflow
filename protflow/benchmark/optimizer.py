@@ -8,9 +8,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+import logging
 import time
 import pandas as pd
 import numpy as np
+
+logger = logging.getLogger("protflow.benchmark.optimizer")
 
 from protflow.pipeline import Pipeline
 from protflow.runner import Runner
@@ -78,9 +81,6 @@ class PipelineOptimizer:
             try:
                 coll = SequenceCollection(protein_id=seq_obj.protein_id, sequences={seq_obj.protein_id: seq_obj})
                 state = pipeline.run({"protein": seq_obj, "proteins": coll})
-                lat_ms = (time.perf_counter() - t0) * 1000.0
-                latencies.append(lat_ms)
-
                 p_table = state["priority_table"].df
                 raw_score = float(p_table["final_priority_score"].iloc[0])
 
@@ -98,8 +98,10 @@ class PipelineOptimizer:
 
                 # Classify candidate: threshold at 0.60
                 is_predicted_active = adj_score >= 0.60
+                latencies.append((time.perf_counter() - t0) * 1000.0)
 
-            except Exception:
+            except Exception as e:
+                logger.warning("Pipeline variant evaluation failed for protein '%s': %s", row["protein_id"], e)
                 adj_score = 0.0
                 is_predicted_active = False
                 latencies.append(10.0)

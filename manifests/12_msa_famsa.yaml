@@ -1,0 +1,13 @@
+name: msa_famsa
+version: "2.5.2"
+description: Ultra-fast Multiple Sequence Alignment using FAMSA 2 (Deorowicz et al. 2021) for large protein families
+inputs:
+  sequences: SequenceCollection
+outputs:
+  alignment: Alignment
+  aligned_sequences: SequenceCollection
+  conservation: Table
+execution:
+  type: local
+  command: "famsa {inputs.sequences.file_path} {output_dir}/aligned.fasta"
+adapter: protflow.adapters.msa:parse_famsa

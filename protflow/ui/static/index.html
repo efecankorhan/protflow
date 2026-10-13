@@ -114,11 +114,22 @@
     /* Left Drawer: Tool Library */
     #sidebar-left {
       width: 290px;
+      min-width: 290px;
       background: var(--panel-bg);
       border-right: 1px solid var(--border);
       display: flex;
       flex-direction: column;
       z-index: 50;
+      transition: width 0.2s ease, min-width 0.2s ease, opacity 0.2s ease;
+      overflow: hidden;
+    }
+    #sidebar-left.collapsed {
+      width: 0 !important;
+      min-width: 0 !important;
+      border-right: none !important;
+      padding: 0 !important;
+      opacity: 0;
+      pointer-events: none;
     }
     .sidebar-header {
       padding: 12px;
@@ -368,6 +379,20 @@
       background: rgba(255, 71, 87, 0.2);
       color: #ff4757;
     }
+    .node-run-step-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 10px;
+      padding: 2px 5px;
+      border-radius: 4px;
+      cursor: pointer;
+      line-height: 1;
+    }
+    .node-run-step-btn:hover {
+      background: rgba(0, 242, 254, 0.2);
+      color: #00f2fe;
+    }
 
     /* Node Ports & Body */
     .node-body {
@@ -437,12 +462,48 @@
     /* Right Drawer: Node Inspector */
     #sidebar-right {
       width: 320px;
+      min-width: 320px;
       background: var(--panel-bg);
       border-left: 1px solid var(--border);
       display: flex;
       flex-direction: column;
       z-index: 50;
+      transition: width 0.2s ease, min-width 0.2s ease, opacity 0.2s ease;
+      overflow: hidden;
     }
+    #sidebar-right.collapsed {
+      width: 0 !important;
+      min-width: 0 !important;
+      border-left: none !important;
+      padding: 0 !important;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .sidebar-toggle-pill {
+      position: absolute;
+      top: 14px;
+      z-index: 60;
+      background: #191b22;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+      transition: all 0.15s ease;
+    }
+    .sidebar-toggle-pill:hover {
+      background: #252833;
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .sidebar-toggle-pill.pill-left { left: 14px; }
+    .sidebar-toggle-pill.pill-right { right: 14px; }
     .inspector-header {
       padding: 12px 16px;
       border-bottom: 1px solid var(--border);
@@ -662,6 +723,7 @@
     <div class="brand">
       <span>ProtFlow</span>
       <span class="brand-badge">Pipeline Studio</span>
+      <button id="hdr-btn-tools" onclick="toggleSidebarLeft()" title="Araçlar Panelini Aç/Kapat" style="margin-left:12px; font-size:11px; padding:4px 8px; background:#1e2029; border:1px solid var(--border); color:var(--text); border-radius:4px; cursor:pointer;">Araçlar</button>
     </div>
     <div class="top-actions">
       <button onclick="openPriorInputModal()" style="border-color:#6c5ce7; color:#a29bfe; font-weight:600;">Girdi Hazırla (Genom)</button>
@@ -673,6 +735,7 @@
       <button onclick="openWetLabModal()">Islak Lab / Alanin</button>
       <button onclick="openPipelineOutputsModal()" style="border-color:#2ed573; color:#2ed573; font-weight:600;">Hattın Çıktıları</button>
       <button class="primary" onclick="runPipelineStudio()">Hattı Çalıştır</button>
+      <button id="hdr-btn-inspector" onclick="toggleSidebarRight()" title="Denetim Panelini Aç/Kapat" style="font-size:11px; padding:4px 8px; background:#1e2029; border:1px solid var(--border); color:var(--text); border-radius:4px; cursor:pointer;">Denetim</button>
     </div>
   </header>
 
@@ -681,8 +744,9 @@
     
     <!-- Left Drawer: Tool Library -->
     <aside id="sidebar-left">
-      <div class="sidebar-header">
+      <div class="sidebar-header" style="display:flex; align-items:center; gap:6px;">
         <input type="text" id="tool-search" class="search-box" placeholder="Araç ara (P2Rank, Foldseek...)" oninput="filterTools()">
+        <button id="btn-collapse-left" onclick="toggleSidebarLeft()" title="Sol Paneli Gizle" style="padding:5px 8px; font-size:11px; flex-shrink:0; background:#1b1d24; border:1px solid var(--border); color:var(--text-muted); border-radius:4px; cursor:pointer;">◀</button>
       </div>
       <div class="library-list" id="tool-categories"></div>
       <div style="padding:12px; border-top:1px solid var(--border);">
@@ -692,6 +756,14 @@
 
     <!-- Center Canvas (Pan & Zoom Infinite Workspace) -->
     <main id="canvas-container">
+      <!-- Floating Panel Toggle Tabs (Visible when sidebars are collapsed) -->
+      <button id="pill-expand-left" class="sidebar-toggle-pill pill-left" onclick="toggleSidebarLeft()" title="Araçlar Panelini Aç">
+        ▶ Araçlar
+      </button>
+      <button id="pill-expand-right" class="sidebar-toggle-pill pill-right" onclick="toggleSidebarRight()" title="Denetim Panelini Aç">
+        ◀ Denetim
+      </button>
+
       <div id="viewport-pan">
         <svg id="svg-connections">
           <path id="temp-wire" class="wire wire-dragging" d="" style="display:none;"></path>
@@ -713,8 +785,11 @@
     <!-- Right Drawer: Node Inspector -->
     <aside id="sidebar-right">
       <div class="inspector-header">
-        <span class="inspector-title">Düğüm Denetimi</span>
-        <span id="inspector-node-id" style="font-size:11px; color:var(--text-muted);">Seçim yok</span>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span class="inspector-title">Düğüm Denetimi</span>
+          <span id="inspector-node-id" style="font-size:11px; color:var(--text-muted);">Seçim yok</span>
+        </div>
+        <button id="btn-collapse-right" onclick="toggleSidebarRight()" title="Sağ Paneli Gizle" style="padding:4px 8px; font-size:11px; background:#1b1d24; border:1px solid var(--border); color:var(--text-muted); border-radius:4px; cursor:pointer;">▶</button>
       </div>
       <div class="inspector-content" id="inspector-body">
         <p style="color:var(--text-muted); font-size:12px; text-align:center; margin-top:40px;">
@@ -824,8 +899,9 @@
           <h3 class="modal-title" id="out-modal-title">Çıktı Görüntüleyici</h3>
           <span id="out-modal-subtitle" style="font-size:11px; color:var(--text-muted);"></span>
         </div>
-        <div style="display:flex; gap:10px; align-items:center;">
+        <div style="display:flex; gap:8px; align-items:center;">
           <button id="out-modal-dl-btn" style="border-color:#2ed573; color:#2ed573; font-size:11px;">İndir</button>
+          <button id="out-modal-dl-excel-btn" style="border-color:#00f2fe; color:#00f2fe; font-size:11px; display:none;">Excel Uyumlu (;)</button>
           <button class="close-icon" onclick="closeModal('output-viewer-modal')">&times;</button>
         </div>
       </div>
@@ -946,6 +1022,7 @@
     let availableOrganisms = [];
     let activeOrganismId = 'ecoli_k12';
     let activeGenomeDna = 'ATGGCTGGGCTGGTGGCCATCCTGGAGAAATTCGGCGACGAGCTGCGTTGGGCGCCGAAAACCTGCCACTATGGCGCGGTGATCCTGTCCTAA';
+    let activeCdsRecords = [];
 
     // Pan & Zoom Infinite Canvas state
     let panX = 60;
@@ -1099,13 +1176,16 @@
           const r = data.result;
           activeGenomeDna = r.sequence;
           activeOrganismId = r.organism || query;
+          activeCdsRecords = r.cds_records || [];
           const ta = document.getElementById('modal-genome-seq');
           if (ta) ta.value = activeGenomeDna;
           recalculateSeqStats();
+          const cdsCount = activeCdsRecords.length;
+          const cdsMsg = cdsCount > 0 ? `, ${cdsCount} küratörlü CDS` : '';
           if (statusEl) {
-            statusEl.innerHTML = `<span style="color:#2ed573; font-weight:600;">Başarılı: ${r.organism} (${r.length} bp, %${r.gc_content} GC)</span>`;
+            statusEl.innerHTML = `<span style="color:#2ed573; font-weight:600;">Başarılı: ${r.organism} (${r.length} bp, %${r.gc_content} GC${cdsMsg})</span>`;
           }
-          showToast(`NCBI'dan çekildi: ${r.organism} (${r.length} bp)`, "toast-success");
+          showToast(`NCBI'dan çekildi: ${r.organism} (${r.length} bp${cdsMsg})`, "toast-success");
         } else {
           if (statusEl) statusEl.innerHTML = `<span style="color:#ff4757;">Hata: ${data.error || 'Bulunamadı'}</span>`;
           showToast(data.error || "NCBI kaydı bulunamadı.", "toast-error");
@@ -1126,6 +1206,17 @@
       document.getElementById('out-modal-title').innerText = `${nodeId} → ${outKey} (${outData.type})`;
       const dlBtn = document.getElementById('out-modal-dl-btn');
       dlBtn.onclick = () => downloadNodeOutput(nodeId, outKey);
+      const dlExcelBtn = document.getElementById('out-modal-dl-excel-btn');
+      if (outData.csv) {
+        if (dlExcelBtn) {
+          dlExcelBtn.style.display = 'inline-block';
+          dlExcelBtn.onclick = () => downloadNodeOutput(nodeId, outKey, 'excel');
+        }
+        dlBtn.innerText = 'İndir (CSV ,)';
+      } else {
+        if (dlExcelBtn) dlExcelBtn.style.display = 'none';
+        dlBtn.innerText = 'İndir';
+      }
 
       const contentBox = document.getElementById('out-modal-content');
       if (outData.type === 'Sequence') {
@@ -1174,7 +1265,7 @@
       openModal('output-viewer-modal');
     }
 
-    function downloadNodeOutput(nodeId, outKey) {
+    function downloadNodeOutput(nodeId, outKey, format = 'standard') {
       const nOutputs = (currentExecutionOutputs && currentExecutionOutputs[nodeId]) || {};
       const outData = nOutputs[outKey];
       if (!outData) return;
@@ -1192,9 +1283,14 @@
         filename += '.fasta';
         content = outData.fasta;
       } else if (outData.csv) {
-        filename += '.csv';
-        content = outData.csv;
-        mimeType = 'text/csv';
+        if (format === 'excel') {
+          filename += '_excel.csv';
+          content = '\ufeff' + (outData.csv_excel || outData.csv.split('\n').map(l => l.replace(/,/g, ';')).join('\n'));
+        } else {
+          filename += '.csv';
+          content = '\ufeff' + outData.csv;
+        }
+        mimeType = 'text/csv;charset=utf-8';
       } else {
         filename += '.json';
         content = JSON.stringify(outData, null, 2);
@@ -1206,6 +1302,7 @@
       a.href = URL.createObjectURL(blob);
       a.download = filename;
       a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
       showToast(`${filename} indirildi.`, 'toast-success');
     }
 
@@ -1219,6 +1316,7 @@
       a.href = URL.createObjectURL(blob);
       a.download = filename;
       a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
       showToast(`${filename} indirildi.`, 'toast-success');
     }
 
@@ -1259,7 +1357,8 @@
               </div>
               <div style="display:flex; gap:6px;">
                 <button style="flex:1; padding:4px 8px; font-size:11px;" onclick="inspectNodeOutput('${nodeId}', '${outKey}')">İncele</button>
-                <button style="flex:1; padding:4px 8px; font-size:11px; color:#2ed573; border-color:#2ed573;" onclick="downloadNodeOutput('${nodeId}', '${outKey}')">İndir</button>
+                <button style="flex:1; padding:4px 8px; font-size:11px; color:#2ed573; border-color:#2ed573;" onclick="downloadNodeOutput('${nodeId}', '${outKey}')">${outData.csv ? 'CSV' : 'İndir'}</button>
+                ${outData.csv ? `<button style="flex:1; padding:4px 8px; font-size:11px; color:#00f2fe; border-color:#00f2fe;" title="Excel / Türkçe Noktalı Virgül (;) Formatı" onclick="downloadNodeOutput('${nodeId}', '${outKey}', 'excel')">Excel (;)</button>` : ''}
               </div>
             </div>
           `;
@@ -1616,31 +1715,100 @@
     function setupPanZoom() {
       const container = document.getElementById('canvas-container');
 
-      // Mouse wheel zoom centered at cursor
+      // Touchpad 2-finger pan (left/right/up/down) & Pinch-to-zoom / Ctrl+Wheel zoom
       container.addEventListener('wheel', (e) => {
         e.preventDefault();
         const rect = container.getBoundingClientRect();
         const mouseX = e.clientX - rect.left;
         const mouseY = e.clientY - rect.top;
 
-        const factor = e.deltaY < 0 ? 1.12 : 0.89;
-        const newZoom = Math.min(Math.max(zoom * factor, MIN_ZOOM), MAX_ZOOM);
+        if (e.ctrlKey || e.metaKey) {
+          // Touchpad pinch-to-zoom OR Ctrl + Mouse Wheel zoom
+          const zoomDelta = -e.deltaY * 0.006;
+          const factor = Math.exp(zoomDelta);
+          const newZoom = Math.min(Math.max(zoom * factor, MIN_ZOOM), MAX_ZOOM);
 
-        panX = mouseX - (mouseX - panX) * (newZoom / zoom);
-        panY = mouseY - (mouseY - panY) * (newZoom / zoom);
-        zoom = newZoom;
-
-        updateViewportTransform();
+          panX = mouseX - (mouseX - panX) * (newZoom / zoom);
+          panY = mouseY - (mouseY - panY) * (newZoom / zoom);
+          zoom = newZoom;
+          updateViewportTransform();
+        } else {
+          // Touchpad 2-finger pan (sağa, sola, yukarı, aşağı serbest gezinme)
+          panX -= e.deltaX;
+          panY -= e.deltaY;
+          updateViewportTransform();
+        }
       }, { passive: false });
 
-      // Canvas pan (click drag on background)
-      container.addEventListener('mousedown', (e) => {
-        if (e.target.closest('.node-card') || e.target.closest('.port-item') || e.target.closest('.canvas-controls') || e.target.closest('.wire-group')) {
-          return;
+      // Touchpad / Touchscreen gesture pan & pinch
+      let initialDist = null;
+      let lastTouch = null;
+
+      container.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) {
+          if (!e.target.closest('.node-card') && !e.target.closest('.port-item') && !e.target.closest('.canvas-controls')) {
+            lastTouch = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+          }
+        } else if (e.touches.length === 2) {
+          const dx = e.touches[0].clientX - e.touches[1].clientX;
+          const dy = e.touches[0].clientY - e.touches[1].clientY;
+          initialDist = Math.hypot(dx, dy);
+          const rect = container.getBoundingClientRect();
+          lastTouch = {
+            x: (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left,
+            y: (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top
+          };
         }
-        isPanning = true;
-        panStartX = e.clientX - panX;
-        panStartY = e.clientY - panY;
+      }, { passive: true });
+
+      container.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 1 && lastTouch) {
+          const dx = e.touches[0].clientX - lastTouch.x;
+          const dy = e.touches[0].clientY - lastTouch.y;
+          panX += dx;
+          panY += dy;
+          lastTouch = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+          updateViewportTransform();
+        } else if (e.touches.length === 2 && initialDist && lastTouch) {
+          e.preventDefault();
+          const rect = container.getBoundingClientRect();
+          const curCenter = {
+            x: (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left,
+            y: (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top
+          };
+
+          // Pan by midpoint movement
+          panX += (curCenter.x - lastTouch.x);
+          panY += (curCenter.y - lastTouch.y);
+
+          // Pinch zoom around active midpoint
+          const dx = e.touches[0].clientX - e.touches[1].clientX;
+          const dy = e.touches[0].clientY - e.touches[1].clientY;
+          const dist = Math.hypot(dx, dy);
+          const factor = dist / initialDist;
+          const newZoom = Math.min(Math.max(zoom * factor, MIN_ZOOM), MAX_ZOOM);
+
+          panX = curCenter.x - (curCenter.x - panX) * (newZoom / zoom);
+          panY = curCenter.y - (curCenter.y - panY) * (newZoom / zoom);
+          zoom = newZoom;
+          initialDist = dist;
+          lastTouch = curCenter;
+          updateViewportTransform();
+        }
+      }, { passive: false });
+
+      container.addEventListener('touchend', () => {
+        initialDist = null;
+        lastTouch = null;
+      });
+
+      // Canvas pan (click drag on background or middle click)
+      container.addEventListener('mousedown', (e) => {
+        if (e.button === 1 || (!e.target.closest('.node-card') && !e.target.closest('.port-item') && !e.target.closest('.canvas-controls') && !e.target.closest('.wire-group') && !e.target.closest('.sidebar-toggle-pill'))) {
+          isPanning = true;
+          panStartX = e.clientX - panX;
+          panStartY = e.clientY - panY;
+        }
       });
 
       window.addEventListener('mousemove', (e) => {
@@ -1664,7 +1832,7 @@
 
       // Deselect on empty click
       container.addEventListener('click', (e) => {
-        if (!e.target.closest('.node-card') && !e.target.closest('.canvas-controls') && !e.target.closest('.wire-group')) {
+        if (!e.target.closest('.node-card') && !e.target.closest('.canvas-controls') && !e.target.closest('.wire-group') && !e.target.closest('.sidebar-toggle-pill')) {
           selectedNodeId = null;
           selectedConnectionIdx = null;
           renderCanvas();
@@ -1739,6 +1907,7 @@
               <span class="node-badge ${badgeClass}">${m.execution_type || 'local'}</span>
               ${healthPill}
               ${remoteWarn}
+              <button class="node-run-step-btn" title="Bu düğüme kadar çalıştır" onclick="runPipelineUpTo('${node.id}', event)">&#9654;</button>
               <button class="node-close-btn" title="Düğümü Sil" onclick="deleteNode('${node.id}', event)">&times;</button>
             </div>
           </div>
@@ -1774,6 +1943,10 @@
       selectedConnectionIdx = null;
       renderCanvas();
       renderInspector(nodeId);
+      const rightSidebar = document.getElementById('sidebar-right');
+      if (rightSidebar && rightSidebar.classList.contains('collapsed')) {
+        toggleSidebarRight();
+      }
     }
 
     function renderInspector(nodeId) {
@@ -1835,14 +2008,71 @@
               <div>
                 <b style="color:${typeColor}">${outKey}</b> <span style="color:var(--text-muted); font-size:10px;">(${infoText})</span>
               </div>
-              <div style="display:flex; gap:6px;">
+              <div style="display:flex; gap:4px;">
                 <button style="padding:2px 6px; font-size:10px;" onclick="inspectNodeOutput('${node.id}', '${outKey}')">İncele</button>
-                <button style="padding:2px 6px; font-size:10px; color:#2ed573; border-color:#2ed573;" onclick="downloadNodeOutput('${node.id}', '${outKey}')">İndir</button>
+                <button style="padding:2px 6px; font-size:10px; color:#2ed573; border-color:#2ed573;" onclick="downloadNodeOutput('${node.id}', '${outKey}')">${outData.csv ? 'CSV' : 'İndir'}</button>
+                ${outData.csv ? `<button style="padding:2px 6px; font-size:10px; color:#00f2fe; border-color:#00f2fe;" title="Excel / Türkçe Noktalı Virgül (;) Formatı" onclick="downloadNodeOutput('${node.id}', '${outKey}', 'excel')">Excel (;)</button>` : ''}
               </div>
             </div>
           `;
         });
         outputsHtml += `</div></div>`;
+      }
+
+      // Interactive protein candidate selection panel
+      let candidateSelectorHtml = '';
+      const isProteinSelect = (m.name === 'protein_select' || node.name === 'protein_select' || (m.inputs && m.inputs.proteins && m.outputs && m.outputs.protein));
+      if (isProteinSelect) {
+        const inConn = connections.find(c => c.toNodeId === node.id && c.toPort === 'proteins');
+        const upstreamId = inConn ? inConn.fromNodeId : null;
+        const upstreamOutputs = (upstreamId && currentExecutionOutputs) ? currentExecutionOutputs[upstreamId] : null;
+        const upstreamProteins = (upstreamOutputs && inConn) ? upstreamOutputs[inConn.fromPort] : null;
+        const candidateList = (upstreamProteins && upstreamProteins.records) || [];
+
+        if (candidateList.length > 0) {
+          const longest = candidateList.reduce((a, b) => (a.length > b.length ? a : b), candidateList[0]);
+          const curVal = (node.parameters && node.parameters.protein_id) || 'auto';
+          candidateSelectorHtml = `
+            <div class="field-group" style="background:#131d2e; border:1px solid #1e40af; padding:12px; border-radius:6px; margin-bottom:12px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <label class="field-label" style="color:#60a5fa; font-weight:700; margin:0; font-size:12px;">
+                  Aday Protein Secimi (${candidateList.length} Aday Hazır)
+                </label>
+                <span style="font-size:10px; color:#93c5fd; background:#1e3a8a; padding:2px 6px; border-radius:3px;">Filtrelendi</span>
+              </div>
+              <select class="field-select" style="font-size:12px; padding:8px; font-weight:600;" onchange="updateInlineParam('${node.id}', 'protein_id', this.value); renderInspector('${node.id}');">
+                <option value="auto" ${(!curVal || curVal==='auto')?'selected':''}>Otomatik Sec (En Uzun: ${longest.protein_id} &bull; ${longest.length} aa)</option>
+                ${candidateList.map(c => `
+                  <option value="${c.protein_id}" ${curVal===c.protein_id?'selected':''}>
+                    ${c.protein_id} &bull; ${c.length} aa ${c.description ? `(${c.description})` : ''}
+                  </option>
+                `).join('')}
+              </select>
+              <div style="display:flex; gap:6px; margin-top:8px;">
+                <button class="primary" style="flex:1; justify-content:center; padding:7px; font-size:11px;" onclick="runPipelineStudio()">
+                  ▶ Bu Seçimle Hattı Tamamla
+                </button>
+              </div>
+            </div>
+          `;
+        } else {
+          candidateSelectorHtml = `
+            <div class="field-group" style="background:#181b24; border:1px dashed #3b82f6; padding:12px; border-radius:6px; margin-bottom:12px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                <div style="font-size:12px; font-weight:700; color:#93c5fd;">Aday Protein Secimi</div>
+                <span style="font-size:10px; color:var(--text-muted);">Ön Aşama Bekleniyor</span>
+              </div>
+              <div style="font-size:11px; color:var(--text-muted); margin-bottom:8px;">
+                Filtrelenen aday proteinleri görüp aralarından seçim yapmak için hattı bu aşamaya kadar çalıştırabilirsiniz.
+              </div>
+              <div style="display:flex; gap:6px;">
+                <button style="flex:1; justify-content:center; background:#1e293b; border-color:#3b82f6; color:#60a5fa; font-size:11px; padding:7px;" onclick="runPipelineUpTo('${node.id}')">
+                  ▶ Buraya Kadar Çalıştır (Adayları Listele)
+                </button>
+              </div>
+            </div>
+          `;
+        }
       }
 
       body.innerHTML = `
@@ -1852,6 +2082,7 @@
           <span id="insp-test-status" class="node-badge badge-local">${(node.status || 'idle').toUpperCase()}${node.duration_ms ? ` (${node.duration_ms}ms)` : ''}</span>
         </div>
         ${swapHtml}
+        ${candidateSelectorHtml}
         ${outputsHtml}
         <div class="field-group">
           <label class="field-label">Düğüm Başlığı</label>
@@ -1904,9 +2135,10 @@
           <label class="field-label">Gelişmiş Parametreler (JSON)</label>
           <textarea class="field-textarea" id="insp-params">${JSON.stringify(node.parameters || {}, null, 2)}</textarea>
         </div>
-        <div style="display:flex; gap:8px; margin-top:8px;">
+        <div style="display:flex; gap:6px; margin-top:8px;">
           <button class="primary" style="flex:1;" onclick="saveInspectorChanges('${node.id}')">Kaydet</button>
           <button style="flex:1;" onclick="testNodeInInspector('${node.id}')">Test Et</button>
+          <button style="flex:1.2; border-color:#00f2fe; color:#00f2fe; font-size:11px;" onclick="runPipelineUpTo('${node.id}')" title="Bu düğüme kadar olan hattı sırayla çalıştırır">▶ Buraya Kadar</button>
         </div>
         <div id="inspector-test-box" style="display:none; font-size:11px; padding:8px; border-radius:6px; margin-top:6px;"></div>
         <div style="margin-top:16px; padding-top:12px; border-top:1px solid var(--border);">
@@ -2090,43 +2322,142 @@
       }
     }
 
-    // Auto-Layout
+    // Topological Auto-Layout Algorithm
     function autoLayoutDAG() {
-      const stageMap = {
-        'prior_input': { col: 0, row: 1 },
-        'gene_prediction': { col: 1, row: 1 },
-        'localization_filter': { col: 2, row: 1 },
-        'structure_prediction': { col: 3, row: 1 },
-        'quality_assessment': { col: 4, row: 1 },
-        'pocket_finding': { col: 5, row: 0 },
-        'surface_hydrophobicity': { col: 5, row: 1 },
-        'structural_homology': { col: 5, row: 2 },
-        'final_prioritization': { col: 6, row: 1 },
-        'codon_optimization': { col: 7, row: 1 }
-      };
+      if (!activeNodes || activeNodes.length === 0) return;
 
-      let unknownIdx = 0;
-      activeNodes.forEach(node => {
-        const lower = node.name.toLowerCase();
-        let match = null;
-        for (const [k, pos] of Object.entries(stageMap)) {
-          if (lower.includes(k) || (node.manifestFile && node.manifestFile.toLowerCase().includes(k))) {
-            match = pos;
-            break;
-          }
-        }
-        if (match) {
-          node.x = 80 + match.col * 310;
-          node.y = 60 + match.row * 190;
-        } else {
-          node.x = 80 + (unknownIdx % 5) * 310;
-          node.y = 500 + Math.floor(unknownIdx / 5) * 190;
-          unknownIdx++;
-        }
+      const COL_WIDTH = 320;
+      const ROW_HEIGHT = 190;
+      const START_X = 80;
+      const START_Y = 80;
+
+      const nodeMap = new Map();
+      activeNodes.forEach(n => nodeMap.set(n.id, n));
+
+      // Filter valid connections between existing nodes
+      const validConns = connections.filter(c => 
+        c && nodeMap.has(c.fromNodeId) && nodeMap.has(c.toNodeId) && c.fromNodeId !== c.toNodeId
+      );
+
+      // Undirected graph to detect connected components
+      const neighbors = new Map();
+      activeNodes.forEach(n => neighbors.set(n.id, []));
+      validConns.forEach(c => {
+        neighbors.get(c.fromNodeId).push(c.toNodeId);
+        neighbors.get(c.toNodeId).push(c.fromNodeId);
       });
 
+      const visited = new Set();
+      const components = [];
+      const orphanNodes = [];
+
+      activeNodes.forEach(n => {
+        if (visited.has(n.id)) return;
+
+        // Degree 0 node: orphan / unconnected
+        if (neighbors.get(n.id).length === 0) {
+          visited.add(n.id);
+          orphanNodes.push(n);
+          return;
+        }
+
+        // BFS to collect all nodes in this connected component
+        const comp = [];
+        const queue = [n.id];
+        visited.add(n.id);
+
+        while (queue.length > 0) {
+          const currId = queue.shift();
+          comp.push(nodeMap.get(currId));
+
+          for (const nextId of neighbors.get(currId)) {
+            if (!visited.has(nextId)) {
+              visited.add(nextId);
+              queue.push(nextId);
+            }
+          }
+        }
+
+        components.push(comp);
+      });
+
+      let currentBaseY = START_Y;
+
+      // Layout each connected component horizontally (left-to-right DAG flow)
+      components.forEach(comp => {
+        const compNodeIds = new Set(comp.map(n => n.id));
+        const compEdges = validConns.filter(c => 
+          compNodeIds.has(c.fromNodeId) && compNodeIds.has(c.toNodeId)
+        );
+
+        // Longest-path layering (rank assignment)
+        const layerMap = new Map();
+        comp.forEach(n => layerMap.set(n.id, 0));
+
+        // Relaxation loop for DAG layering (cycle-safe: max comp.length iterations)
+        for (let iter = 0; iter < comp.length; iter++) {
+          let updated = false;
+          for (const edge of compEdges) {
+            const fromLayer = layerMap.get(edge.fromNodeId);
+            const toLayer = layerMap.get(edge.toNodeId);
+            if (toLayer < fromLayer + 1) {
+              layerMap.set(edge.toNodeId, fromLayer + 1);
+              updated = true;
+            }
+          }
+          if (!updated) break;
+        }
+
+        // Compress layers to remove empty columns/gaps
+        const uniqueDepths = Array.from(new Set(comp.map(n => layerMap.get(n.id)))).sort((a, b) => a - b);
+        const depthToCol = new Map();
+        uniqueDepths.forEach((d, idx) => depthToCol.set(d, idx));
+
+        const columns = uniqueDepths.map(() => []);
+        comp.forEach(n => {
+          const colIdx = depthToCol.get(layerMap.get(n.id));
+          columns[colIdx].push(n);
+        });
+
+        // Sort nodes in each column by name for visual consistency
+        columns.forEach(colNodes => {
+          colNodes.sort((a, b) => a.name.localeCompare(b.name));
+        });
+
+        // Determine component vertical bounds
+        const maxNodesInCol = Math.max(...columns.map(c => c.length), 1);
+        const compHeight = maxNodesInCol * ROW_HEIGHT;
+        const compCenterY = currentBaseY + compHeight / 2;
+
+        // Position nodes in grid
+        columns.forEach((colNodes, colIdx) => {
+          const colCount = colNodes.length;
+          colNodes.forEach((node, rowIdx) => {
+            node.x = START_X + colIdx * COL_WIDTH;
+            // Center nodes vertically around the component midline
+            node.y = Math.round(compCenterY - ((colCount - 1) / 2 - rowIdx) * ROW_HEIGHT - 70);
+          });
+        });
+
+        currentBaseY += compHeight + 70;
+      });
+
+      // Layout orphan (unconnected) nodes below all connected pipelines
+      // Wrapped nicely: 3 nodes per row
+      if (orphanNodes.length > 0) {
+        orphanNodes.sort((a, b) => a.name.localeCompare(b.name));
+        const orphanCols = 3;
+        orphanNodes.forEach((node, idx) => {
+          const col = idx % orphanCols;
+          const row = Math.floor(idx / orphanCols);
+          node.x = START_X + col * COL_WIDTH;
+          node.y = currentBaseY + row * ROW_HEIGHT;
+        });
+      }
+
       renderCanvas();
-      showToast("Hat soldan sağa katmanlara otomatik düzenlendi.", "toast-success");
+      fitView();
+      showToast("İş akışı topolojik olarak düzenlendi.", "toast-success");
     }
 
     // Node Dragging with Zoom/Pan scale compensation
@@ -2135,7 +2466,7 @@
       let startWorldX, startWorldY;
 
       card.addEventListener('mousedown', (e) => {
-        if (e.target.closest('.port-item') || e.target.closest('.node-close-btn')) return;
+        if (e.target.closest('.port-item') || e.target.closest('.node-close-btn') || e.target.closest('.node-run-step-btn')) return;
         isDragging = true;
         const world = screenToWorld(e.clientX, e.clientY);
         startWorldX = world.x - node.x;
@@ -2333,56 +2664,85 @@
     }
 
     // --- PIPELINE EXECUTION ---
-    async function runPipelineStudio() {
-      const hasRemote = activeNodes.some(n => n.manifest.is_remote);
+    let pendingRunUpToNodeId = null;
+
+    function runPipelineUpTo(targetNodeId, event) {
+      if (event && event.stopPropagation) {
+        event.stopPropagation();
+      }
+      runPipelineStudio(targetNodeId);
+    }
+
+    async function runPipelineStudio(upToNodeId = null) {
+      // Topologically sort active nodes using connection dependencies
+      const nodeMap = {};
+      const inDegree = {};
+      const adj = {};
+      activeNodes.forEach(n => {
+        nodeMap[n.id] = n;
+        inDegree[n.id] = 0;
+        adj[n.id] = [];
+      });
+      connections.forEach(c => {
+        if (inDegree[c.toNodeId] !== undefined && adj[c.fromNodeId] !== undefined) {
+          adj[c.fromNodeId].push(c.toNodeId);
+          inDegree[c.toNodeId]++;
+        }
+      });
+      const queue = activeNodes.filter(n => inDegree[n.id] === 0).sort((a, b) => (a.x || 0) - (b.x || 0));
+      const sortedNodes = [];
+      while (queue.length > 0) {
+        const curr = queue.shift();
+        sortedNodes.push(curr);
+        (adj[curr.id] || []).forEach(nextId => {
+          inDegree[nextId]--;
+          if (inDegree[nextId] === 0) {
+            queue.push(nodeMap[nextId]);
+            queue.sort((a, b) => (a.x || 0) - (b.x || 0));
+          }
+        });
+      }
+      activeNodes.forEach(n => {
+        if (!sortedNodes.includes(n)) sortedNodes.push(n);
+      });
+
+      // If upToNodeId specified, slice pipeline to only target node and its dependencies
+      let executionNodes = sortedNodes;
+      if (upToNodeId && nodeMap[upToNodeId]) {
+        const neededIds = new Set([upToNodeId]);
+        const q = [upToNodeId];
+        while (q.length > 0) {
+          const curr = q.shift();
+          connections.forEach(c => {
+            if (c.toNodeId === curr && !neededIds.has(c.fromNodeId)) {
+              neededIds.add(c.fromNodeId);
+              q.push(c.fromNodeId);
+            }
+          });
+        }
+        executionNodes = sortedNodes.filter(n => neededIds.has(n.id));
+      }
+
+      const hasRemote = executionNodes.some(n => n.manifest && n.manifest.is_remote);
       if (hasRemote && !privacyConsentGiven) {
-        const remoteNode = activeNodes.find(n => n.manifest.is_remote);
-        document.getElementById('privacy-tool-name').innerText = remoteNode.name;
-        document.getElementById('privacy-tool-url').innerText = remoteNode.manifest.url || 'Uzak API';
+        const remoteNode = executionNodes.find(n => n.manifest && n.manifest.is_remote);
+        document.getElementById('privacy-tool-name').innerText = remoteNode ? remoteNode.name : 'Uzak Araç';
+        document.getElementById('privacy-tool-url').innerText = (remoteNode && remoteNode.manifest.url) || 'Uzak API';
+        pendingRunUpToNodeId = upToNodeId;
         openModal('privacy-modal');
         return;
       }
 
-      showToast("Hat çalıştırılıyor... Düğümler işleniyor.", "toast-success");
-      activeNodes.forEach(n => { n.status = 'running'; });
+      const targetTitle = (upToNodeId && nodeMap[upToNodeId]) ? `"${nodeMap[upToNodeId].name}" adımına kadar` : 'Tüm hat';
+      showToast(`${targetTitle} çalıştırılıyor...`, "toast-success");
+      executionNodes.forEach(n => { n.status = 'running'; });
       renderCanvas();
 
       try {
-        // Topologically sort active nodes using connection dependencies
-        const nodeMap = {};
-        const inDegree = {};
-        const adj = {};
-        activeNodes.forEach(n => {
-          nodeMap[n.id] = n;
-          inDegree[n.id] = 0;
-          adj[n.id] = [];
-        });
-        connections.forEach(c => {
-          if (inDegree[c.toNodeId] !== undefined && adj[c.fromNodeId] !== undefined) {
-            adj[c.fromNodeId].push(c.toNodeId);
-            inDegree[c.toNodeId]++;
-          }
-        });
-        const queue = activeNodes.filter(n => inDegree[n.id] === 0).sort((a, b) => (a.x || 0) - (b.x || 0));
-        const sortedNodes = [];
-        while (queue.length > 0) {
-          const curr = queue.shift();
-          sortedNodes.push(curr);
-          (adj[curr.id] || []).forEach(nextId => {
-            inDegree[nextId]--;
-            if (inDegree[nextId] === 0) {
-              queue.push(nodeMap[nextId]);
-              queue.sort((a, b) => (a.x || 0) - (b.x || 0));
-            }
-          });
-        }
-        activeNodes.forEach(n => {
-          if (!sortedNodes.includes(n)) sortedNodes.push(n);
-        });
-
-        const dynamicSteps = sortedNodes.map(n => {
+        const executionIds = new Set(executionNodes.map(n => n.id));
+        const dynamicSteps = executionNodes.map(n => {
           const stepInputs = {};
-          connections.filter(c => c.toNodeId === n.id).forEach(c => {
+          connections.filter(c => c.toNodeId === n.id && executionIds.has(c.fromNodeId)).forEach(c => {
             stepInputs[c.toPort] = `${c.fromNodeId}.${c.fromPort}`;
           });
           const mFile = n.manifestFile || (n.manifest && n.manifest.file ? `manifests/${n.manifest.file}` : `manifests/${n.manifest.name}.yaml`);
@@ -2402,10 +2762,12 @@
         const bodyObj = (dynamicSteps.length > 0) ? {
           pipeline: { steps: dynamicSteps },
           genome_dna: genomeDnaToSend,
-          organism: orgIdToSend
+          organism: orgIdToSend,
+          cds_records: activeCdsRecords
         } : {
           genome_dna: genomeDnaToSend,
-          organism: orgIdToSend
+          organism: orgIdToSend,
+          cds_records: activeCdsRecords
         };
 
         const res = await fetch('/api/pipeline/run', {
@@ -2415,7 +2777,7 @@
         });
         const data = await res.json();
         if (data.status === 'SUCCESS') {
-          currentExecutionOutputs = data.node_outputs || {};
+          currentExecutionOutputs = { ...currentExecutionOutputs, ...(data.node_outputs || {}) };
           data.step_results.forEach(stepRes => {
             const node = activeNodes.find(n => n.id === stepRes.name);
             if (node) {
@@ -2429,15 +2791,24 @@
             }
           });
           renderCanvas();
-          if (selectedNodeId) renderInspector(selectedNodeId);
-          showToast("Hat tamamlandı! Her adımın çıktıları denetim panelinde hazır.", "toast-success");
-          if (data.priority_table && data.priority_table.length > 0 && activeNodes.some(n => n.name.toLowerCase().includes('prioritiz'))) {
-            renderResultsModal(data);
+          if (upToNodeId) {
+            selectNode(upToNodeId);
+            showToast(`"${(nodeMap[upToNodeId] || {}).name || upToNodeId}" aşamasına kadar tamamlandı! Seçenekler denetim panelinde hazır.`, "toast-success");
+          } else {
+            if (selectedNodeId) renderInspector(selectedNodeId);
+            showToast("Hat tamamlandı! Her adımın çıktıları denetim panelinde hazır.", "toast-success");
+            if (data.priority_table && data.priority_table.length > 0 && activeNodes.some(n => n.name.toLowerCase().includes('prioritiz'))) {
+              renderResultsModal(data);
+            }
           }
         } else {
+          executionNodes.forEach(n => { if (n.status === 'running') n.status = 'idle'; });
+          renderCanvas();
           showToast(`Hata: ${data.error}`, "toast-error");
         }
       } catch (err) {
+        executionNodes.forEach(n => { if (n.status === 'running') n.status = 'idle'; });
+        renderCanvas();
         showToast(`Sunucu hatası: ${err.message}`, "toast-error");
       }
     }
@@ -2445,7 +2816,9 @@
     function confirmPrivacyConsent() {
       privacyConsentGiven = true;
       closeModal('privacy-modal');
-      runPipelineStudio();
+      const target = pendingRunUpToNodeId;
+      pendingRunUpToNodeId = null;
+      runPipelineStudio(target);
     }
 
     function renderResultsModal(data) {
@@ -2683,6 +3056,26 @@ adapter: protflow.adapters.pockets:parse_p2rank`;
       t.className = type;
       t.style.display = 'block';
       setTimeout(() => { t.style.display = 'none'; }, 3500);
+    }
+
+    function toggleSidebarLeft() {
+      const sb = document.getElementById('sidebar-left');
+      const pill = document.getElementById('pill-expand-left');
+      const hdrBtn = document.getElementById('hdr-btn-tools');
+      sb.classList.toggle('collapsed');
+      const isCollapsed = sb.classList.contains('collapsed');
+      if (pill) pill.style.display = isCollapsed ? 'flex' : 'none';
+      if (hdrBtn) hdrBtn.style.opacity = isCollapsed ? '0.6' : '1';
+    }
+
+    function toggleSidebarRight() {
+      const sb = document.getElementById('sidebar-right');
+      const pill = document.getElementById('pill-expand-right');
+      const hdrBtn = document.getElementById('hdr-btn-inspector');
+      sb.classList.toggle('collapsed');
+      const isCollapsed = sb.classList.contains('collapsed');
+      if (pill) pill.style.display = isCollapsed ? 'flex' : 'none';
+      if (hdrBtn) hdrBtn.style.opacity = isCollapsed ? '0.6' : '1';
     }
 
     window.onload = init;

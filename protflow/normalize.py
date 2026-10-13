@@ -6,8 +6,6 @@ are mapped to compatible [0.0, 1.0] scales without distortion.
 
 from __future__ import annotations
 import math
-from typing import Union, List
-import numpy as np
 
 
 def minmax_norm(val: float, vmin: float, vmax: float) -> float:

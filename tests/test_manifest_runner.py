@@ -176,3 +176,117 @@ def test_runner_cache_roundtrip_collections(tmp_path):
     assert loaded["align"].identity == 0.8
     assert loaded["seqs"].provenance.parameters.get("cache_hit") is True
 
+
+def test_rejects_shell_injection_parameters(tmp_path, sample_data):
+    from protflow.runner import RunnerError
+    runner = Runner(cache_dir=tmp_path / "cache", enable_cache=False)
+    m = Manifest.from_dict({
+        "name": "test_sec",
+        "version": "1.0",
+        "inputs": {"structure": "Structure"},
+        "outputs": {"pockets": "Pocket"},
+        "execution": {"type": "local", "command": "echo {param_bad}"},
+        "adapter": "protflow.adapters.pockets:parse_p2rank"
+    })
+    with pytest.raises(RunnerError, match="prohibited shell metacharacters"):
+        runner.run(m, {"structure": sample_data["structure"]}, parameters={"bad": "test; rm -rf /"})
+    with pytest.raises(RunnerError, match="prohibited shell metacharacters"):
+        runner.run(m, {"structure": sample_data["structure"]}, parameters={"bad": "test\nrm -rf /"})
+    with pytest.raises(RunnerError, match="prohibited shell metacharacters"):
+        runner.run(m, {"structure": sample_data["structure"]}, parameters={"bad": "test > /tmp/hacked"})
+
+
+def test_runner_local_timeout_enforcement(tmp_path, sample_data):
+    from protflow.runner import RunnerError
+    runner = Runner(cache_dir=tmp_path / "cache", enable_cache=False)
+    m = Manifest.from_dict({
+        "name": "timeout_tester",
+        "version": "1.0",
+        "inputs": {"structure": "Structure"},
+        "outputs": {"pockets": "Pocket"},
+        "execution": {
+            "type": "local",
+            "command": "python -c \"import time; time.sleep(5)\"",
+            "timeout": 1
+        },
+        "adapter": "protflow.adapters.pockets:parse_p2rank"
+    })
+    with pytest.raises(RunnerError, match="timed out after 1 seconds"):
+        runner.run(m, {"structure": sample_data["structure"]})
+
+
+def test_prioritizer_with_empty_pockets():
+    from protflow.adapters.prioritizer import parse_prioritization
+    from protflow.types import Table, Pocket
+    import pandas as pd
+
+    q_table = Table(protein_id="DISORDERED_1", df=pd.DataFrame([{"mean_plddt": 45.0, "passed_plddt_filter": True}]))
+    empty_pockets = Pocket(protein_id="DISORDERED_1", df=pd.DataFrame())
+    s_table = Table(protein_id="DISORDERED_1", df=pd.DataFrame([{"hydrophobic_ratio": 0.40}]))
+    f_table = Table(protein_id="DISORDERED_1", df=pd.DataFrame([{"novelty_score": 0.10}]))
+
+    ctx = {
+        "inputs": {
+            "quality_table": q_table,
+            "pockets": empty_pockets,
+            "sasa_table": s_table,
+            "foldseek_table": f_table,
+        }
+    }
+    out = parse_prioritization(None, ctx)
+    assert "priority_table" in out
+    res_df = out["priority_table"].df
+    assert res_df["pocket_score"].iloc[0] == 0.0
+    assert res_df["pocket_volume"].iloc[0] == 0.0
+    assert res_df["final_priority_score"].iloc[0] > 0.0
+
+
+def test_sequence_collection_local_command_fasta_generation(tmp_path):
+    from protflow.types import Sequence, SequenceCollection
+    runner = Runner(cache_dir=tmp_path / "cache", enable_cache=False)
+    m = Manifest.from_dict({
+        "name": "fasta_checker",
+        "version": "1.0",
+        "inputs": {"seqs": "SequenceCollection"},
+        "outputs": {"pockets": "Pocket"},
+        "execution": {
+            "type": "local",
+            "command": "python -c \"import pathlib, sys; p = pathlib.Path(sys.argv[1]); assert p.exists(); t = p.read_text(); assert '>P1' in t and '>P2' in t\" \"{inputs.seqs.file_path}\""
+        },
+        "adapter": "protflow.adapters.pockets:parse_p2rank"
+    })
+    coll = SequenceCollection(protein_id="COL_TEST", sequences={
+        "P1": Sequence(protein_id="P1", sequence="MKA"),
+        "P2": Sequence(protein_id="P2", sequence="AGG")
+    })
+    out_dir = tmp_path / "work"
+    raw = runner._run_local(m, {"seqs": coll}, {}, out_dir)
+    assert raw is not None
+
+
+def test_local_command_path_with_spaces_quoting(tmp_path):
+    from protflow.types import Sequence, SequenceCollection
+    runner = Runner(cache_dir=tmp_path / "cache", enable_cache=False)
+    # Manifest command does NOT put quotes around {inputs.seqs.file_path}
+    m = Manifest.from_dict({
+        "name": "space_checker",
+        "version": "1.0",
+        "inputs": {"seqs": "SequenceCollection"},
+        "outputs": {"pockets": "Pocket"},
+        "execution": {
+            "type": "local",
+            "command": "python -c \"import pathlib, sys; p = pathlib.Path(sys.argv[1]); assert p.exists()\" {inputs.seqs.file_path}"
+        },
+        "adapter": "protflow.adapters.pockets:parse_p2rank"
+    })
+    coll = SequenceCollection(protein_id="SPACE TEST", sequences={
+        "P1": Sequence(protein_id="P1", sequence="MKA"),
+    })
+    # Create directory with spaces in name
+    out_dir_with_spaces = tmp_path / "path with spaces" / "work"
+    out_dir_with_spaces.mkdir(parents=True, exist_ok=True)
+    raw = runner._run_local(m, {"seqs": coll}, {}, out_dir_with_spaces)
+    assert raw is not None
+
+
+

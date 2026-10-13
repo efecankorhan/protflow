@@ -19,7 +19,7 @@ from protflow.export import export_pipeline_to_snakemake, export_pipeline_to_nex
 logger = logging.getLogger("protflow.pipeline")
 
 def evaluate_condition(condition: Optional[str], state: Dict[str, Any]) -> bool:
-    """Safely checks pipeline step execution conditions without arbitrary eval."""
+    """Checks pipeline step execution conditions without arbitrary code execution."""
     if not condition:
         return True
     c = condition.strip()
@@ -29,10 +29,13 @@ def evaluate_condition(condition: Optional[str], state: Dict[str, Any]) -> bool:
     if "in state" in c:
         key = c.split("in state")[0].strip().strip("'\"")
         return key in state
+    if "__" in c:
+        return False
     try:
+        # shortcut: simple eval restricted to state, upgrade to ast parser if untrusted users supply expressions
         return bool(eval(c, {"__builtins__": {}}, {"state": state}))
     except Exception:
-        return True
+        return False
 
 
 @dataclass

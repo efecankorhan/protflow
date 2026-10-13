@@ -165,11 +165,26 @@ def test_mimivirus_translation_and_gene_prediction():
     ids = list(genes["proteins"].sequences)
     got = parse_protein_select(None, {"inputs": {"proteins": genes["proteins"]}, "parameters": {"protein_id": ids[0]}})
     assert got["protein"].protein_id == ids[0]
-    with pytest.raises(ValueError):
-        parse_protein_select(None, {"inputs": {"proteins": genes["proteins"]}, "parameters": {"protein_id": "nope"}})
-    if len(ids) > 1:
-        with pytest.raises(ValueError):
-            parse_protein_select(None, {"inputs": {"proteins": genes["proteins"]}, "parameters": {}})
+    # 5. auto selection picks the longest ORF with provenance metadata
+    from protflow.types import SequenceCollection
+    multi_coll = SequenceCollection(protein_id="multi", sequences={
+        "short_p": Sequence(protein_id="short_p", sequence="M" * 10),
+        "long_p": Sequence(protein_id="long_p", sequence="M" * 50),
+    })
+    auto_got = parse_protein_select(None, {"inputs": {"proteins": multi_coll}, "parameters": {"protein_id": "auto"}})
+    assert auto_got["protein"].protein_id == "long_p"
+    assert auto_got["protein"].provenance.parameters["auto_selected"] is True
+    assert auto_got["protein"].provenance.parameters["selection_rule"] == "longest_orf"
+
+    # 'first' selection picks the literal first sequence
+    first_got = parse_protein_select(None, {"inputs": {"proteins": multi_coll}, "parameters": {"protein_id": "first"}})
+    assert first_got["protein"].protein_id == "short_p"
+    assert first_got["protein"].provenance.parameters["selection_rule"] == "first_orf"
+
+    # null parameters does not raise AttributeError
+    single_coll = SequenceCollection(protein_id="single", sequences={"p1": Sequence(protein_id="p1", sequence="M" * 12)})
+    null_got = parse_protein_select(None, {"inputs": {"proteins": single_coll}, "parameters": None})
+    assert null_got["protein"].protein_id == "p1"
 
 
 def test_filter_acts_on_whole_gene_set():
@@ -187,3 +202,32 @@ def test_filter_acts_on_whole_gene_set():
     assert "protein" not in out
     p = out["filter_table"].provenance.parameters
     assert (p["input_count"], p["passed_count"], p["dropped_count"]) == (2, 1, 1)
+
+
+def test_single_secreted_sequence_dropped():
+    from protflow.adapters.localization import parse_subcellular_filter
+    from protflow.types import Sequence
+
+    secreted = Sequence(protein_id="sec_1", sequence="MLLLVVAAFFLLIIGGAAVVLLAAKK" + "A" * 50)
+    out = parse_subcellular_filter(None, {"inputs": {"protein": secreted}})
+    assert out["protein"].sequence == ""
+    assert out["protein"].description == "DROPPED_BY_FILTER"
+    df = out["filter_table"].df
+    assert df["status"].iloc[0] == "DROPPED"
+    assert bool(df["is_intracellular"].iloc[0]) is False
+    assert df["drop_reason"].iloc[0] == "Signal peptide (Extracellular)"
+
+
+def test_collection_all_secreted_dropped():
+    from protflow.adapters.localization import parse_subcellular_filter
+    from protflow.types import Sequence, SequenceCollection
+
+    secreted1 = Sequence(protein_id="sec_1", sequence="MLLLVVAAFFLLIIGGAAVVLLAAKK" + "A" * 50)
+    secreted2 = Sequence(protein_id="sec_2", sequence="MLLLVVAAFFLLIIGGAAVVLLAAKK" + "G" * 50)
+    coll = SequenceCollection(protein_id="all_sec", sequences={"sec_1": secreted1, "sec_2": secreted2})
+    out = parse_subcellular_filter(None, {"inputs": {"proteins": coll}})
+    assert len(out["proteins"].sequences) == 0
+    p = out["filter_table"].provenance.parameters
+    assert p["input_count"] == 2
+    assert p["passed_count"] == 0
+    assert p["dropped_count"] == 2

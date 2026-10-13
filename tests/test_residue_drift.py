@@ -66,3 +66,11 @@ def test_detects_chain_mismatch(sample_data):
 
     with pytest.raises(ResidueDriftError, match="does not exist in structure"):
         validate_residue_table(wrong_chain_df, st)
+
+
+def test_empty_residue_table_returns_safely(sample_data):
+    st = sample_data["structure"]
+    empty_df = pd.DataFrame(columns=["chain_id", "auth_seq_id", "resname"])
+    res = validate_residue_table(empty_df, st)
+    assert res.empty
+    assert "one_letter" in res.columns

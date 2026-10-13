@@ -22,11 +22,15 @@ steps:
     manifest: manifests/02b_protein_select.yaml
     inputs:
       proteins: proteins
+    parameters:
+      protein_id: auto
 
   - name: structure_prediction
     manifest: manifests/03_alphafold_db.yaml
     inputs:
       protein: protein
+    parameters:
+      allow_synthetic_fallback: true
 
   - name: quality_assessment
     manifest: manifests/04_plddt_filter.yaml

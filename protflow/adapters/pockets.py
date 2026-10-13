@@ -5,24 +5,12 @@ import os
 import subprocess
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
-import json
 import re
 import numpy as np
 import pandas as pd
-import requests
 import gemmi
 
-from protflow.types import (
-    Sequence,
-    Structure,
-    ResidueScore,
-    Pocket,
-    Alignment,
-    Annotation,
-    Table,
-    Provenance
-)
-from protflow.adapters.residue import AA3_TO_1, AA1_TO_3
+from protflow.types import Structure, Pocket, Provenance
 
 
 # --- 5. Pocket Detection (P2Rank & fpocket) ---
@@ -33,6 +21,15 @@ def _detect_cavities_from_structure(structure: Structure, method: str) -> Pocket
     Computes centroid, volume, residues, and assigns pocket score.
     """
     pid = structure.protein_id
+    if not structure.file_path or not Path(structure.file_path).exists():
+        pockets_df = pd.DataFrame([{
+            "protein_id": pid, "pocket_id": 1, "score": 0.0, "center_x": 0.0,
+            "center_y": 0.0, "center_z": 0.0, "volume": 0.0, "residues": ""
+        }])
+        p_obj = Pocket(protein_id=pid, df=pockets_df)
+        p_obj.provenance = Provenance(tool_name=method, tool_version="1.0.0", parameters={"empty_structure": True})
+        return p_obj
+
     st = structure.to_gemmi_structure()
 
     coords = []
@@ -57,6 +54,7 @@ def _detect_cavities_from_structure(structure: Structure, method: str) -> Pocket
         vol = 480.0 if method == "p2rank" else 510.0
     res_list = ",".join(sorted(list(set(res_keys)))[:12])
 
+    # shortcut: geometry and rule-based pocket approximation when p2rank/fpocket binary is absent, install local binaries for exact voronoi/machine-learning cavity prediction
     pockets_df = pd.DataFrame([{
         "protein_id": pid,
         "pocket_id": 1,
@@ -67,7 +65,13 @@ def _detect_cavities_from_structure(structure: Structure, method: str) -> Pocket
         "volume": vol,
         "residues": res_list
     }])
-    return Pocket(protein_id=pid, df=pockets_df)
+    p_obj = Pocket(protein_id=pid, df=pockets_df)
+    p_obj.provenance = Provenance(
+        tool_name=method,
+        tool_version="1.0.0",
+        parameters={"approximate": True, "method": f"{method}_geometric_mock"}
+    )
+    return p_obj
 
 
 def _find_p2rank_and_jre() -> Tuple[Optional[Path], Optional[Path]]:
@@ -98,13 +102,15 @@ def _run_p2rank(structure: Structure, out_dir: Path) -> Optional[Tuple[pd.DataFr
 
     st_path = None
     temp_pdb = None
-    if structure.file_path and Path(structure.file_path).exists():
+    if structure.file_path and Path(structure.file_path).exists() and Path(structure.file_path).suffix.lower() == ".pdb":
         st_path = Path(structure.file_path)
-    else:
+    elif structure.file_path and Path(structure.file_path).exists():
         temp_pdb = out_dir / f"{structure.protein_id}.pdb"
         gemmi_st = structure.to_gemmi_structure()
         gemmi_st.write_minimal_pdb(str(temp_pdb))
         st_path = temp_pdb
+    else:
+        return None
 
     p2_out = out_dir / "p2rank_out"
     p2_out.mkdir(parents=True, exist_ok=True)
@@ -192,8 +198,107 @@ def parse_p2rank(raw_data: Any, context: Dict[str, Any]) -> Dict[str, Any]:
     return {"pockets": _detect_cavities_from_structure(st, method="p2rank")}
 
 
+def _find_fpocket() -> Optional[Path]:
+    import shutil
+    root = Path(__file__).resolve().parents[2]
+    for cand in [
+        root / "tools" / "fpocket" / "bin" / "fpocket",
+        root / "tools" / "fpocket" / "bin" / "fpocket.exe",
+        root / "tools" / "fpocket" / "fpocket",
+        root / "tools" / "fpocket" / "fpocket.exe",
+    ]:
+        if cand.exists():
+            return cand
+    sys_fp = shutil.which("fpocket")
+    return Path(sys_fp) if sys_fp else None
+
+
+def _run_fpocket(structure: Structure, out_dir: Path) -> Optional[pd.DataFrame]:
+    fp_bin = _find_fpocket()
+    if not fp_bin:
+        return None
+
+    st_path = None
+    temp_pdb = None
+    if structure.file_path and Path(structure.file_path).exists() and Path(structure.file_path).suffix.lower() == ".pdb":
+        st_path = Path(structure.file_path)
+    elif structure.file_path and Path(structure.file_path).exists():
+        temp_pdb = out_dir / f"{structure.protein_id}.pdb"
+        structure.to_gemmi_structure().write_minimal_pdb(str(temp_pdb))
+        st_path = temp_pdb
+    else:
+        return None
+
+    try:
+        cmd = [str(fp_bin), "-f", str(st_path)]
+        res = subprocess.run(cmd, cwd=str(out_dir), stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=120)
+        if res.returncode != 0:
+            return None
+
+        stem = st_path.stem
+        candidates = [out_dir / f"{stem}_out" / f"{stem}_info.txt", st_path.parent / f"{stem}_out" / f"{stem}_info.txt"]
+        info_file = next((p for p in candidates if p.exists()), None)
+        if not info_file:
+            return None
+
+        rows = []
+        current_p = {}
+        for line in info_file.read_text(encoding="utf-8", errors="replace").splitlines():
+            line = line.strip()
+            if line.startswith("Pocket") and ":" in line:
+                m = re.match(r"Pocket\s+(\d+)\s*:", line)
+                if m:
+                    if current_p:
+                        rows.append(current_p)
+                    current_p = {
+                        "protein_id": structure.protein_id,
+                        "pocket_id": int(m.group(1)),
+                        "score": 0.0,
+                        "volume": 0.0,
+                        "center_x": 0.0,
+                        "center_y": 0.0,
+                        "center_z": 0.0,
+                        "residues": ""
+                    }
+            elif ":" in line and current_p:
+                parts = line.split(":", 1)
+                k = parts[0].strip().lower()
+                v = parts[1].strip()
+                if "score" in k and "druggability" not in k:
+                    try: current_p["score"] = float(v)
+                    except ValueError: pass
+                elif "druggability" in k:
+                    try: current_p["probability"] = float(v)
+                    except ValueError: pass
+                elif "volume" in k:
+                    try: current_p["volume"] = float(v)
+                    except ValueError: pass
+        if current_p:
+            rows.append(current_p)
+        return pd.DataFrame(rows) if rows else None
+    except Exception:
+        return None
+    finally:
+        if temp_pdb and temp_pdb.exists():
+            try:
+                temp_pdb.unlink()
+            except Exception:
+                pass
+
+
 def parse_fpocket(raw_data: Any, context: Dict[str, Any]) -> Dict[str, Any]:
     st = context["inputs"]["structure"]
+    out_dir = Path(context.get("output_dir", "."))
+    fp_res = _run_fpocket(st, out_dir)
+    if fp_res is not None and not fp_res.empty:
+        pocket_obj = Pocket(protein_id=st.protein_id, df=fp_res)
+        pocket_obj.provenance = Provenance(
+            tool_name="fpocket",
+            tool_version="4.2.3",
+            parameters={"method": "fpocket_voronoi", "pockets_found": len(fp_res)}
+        )
+        return {"pockets": pocket_obj}
+
     return {"pockets": _detect_cavities_from_structure(st, method="fpocket")}
 
 

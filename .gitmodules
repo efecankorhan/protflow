@@ -1,0 +1,21 @@
+[submodule "tools/fpocket"]
+	path = tools/fpocket
+	url = https://github.com/Discngine/fpocket.git
+[submodule "tools/p2rank"]
+	path = tools/p2rank
+	url = https://github.com/rdk/p2rank.git
+[submodule "tools/foldseek"]
+	path = tools/foldseek
+	url = https://github.com/steineggerlab/foldseek.git
+[submodule "tools/colabfold"]
+	path = tools/colabfold
+	url = https://github.com/sokrypton/ColabFold.git
+[submodule "tools/mmseqs2"]
+	path = tools/mmseqs2
+	url = https://github.com/soedinglab/MMseqs2.git
+[submodule "tools/mafft"]
+	path = tools/mafft
+	url = https://gitlab.com/sysimm/mafft.git
+[submodule "tools/famsa"]
+	path = tools/famsa
+	url = https://github.com/refresh-bio/FAMSA.git

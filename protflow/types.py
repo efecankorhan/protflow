@@ -61,7 +61,11 @@ class Sequence(BaseBioType):
         p = Path(path)
         lines = p.read_text(encoding="utf-8").strip().splitlines()
         header = lines[0][1:].strip() if lines and lines[0].startswith(">") else ""
-        seq_parts = [line.strip() for line in lines if not line.startswith(">")]
+        seq_parts = []
+        for line in (lines[1:] if lines and lines[0].startswith(">") else lines):
+            if line.startswith(">"):
+                break
+            seq_parts.append(line.strip())
         seq = "".join(seq_parts)
         pid = protein_id or (header.split()[0] if header else p.stem)
         desc = header[len(pid):].strip() if header.startswith(pid) else header
@@ -76,6 +80,8 @@ class Structure(BaseBioType):
 
     def to_gemmi_structure(self):
         import gemmi
+        if not self.file_path:
+            raise ValueError(f"Structure '{self.protein_id}' has empty file_path (likely dropped by filter).")
         p = Path(self.file_path)
         if not p.exists():
             raise FileNotFoundError(f"Structure file not found: {self.file_path}")
@@ -261,6 +267,28 @@ class SequenceCollection(BaseBioType):
     def add(self, seq: Sequence) -> SequenceCollection:
         self.sequences[seq.protein_id] = seq
         return self
+
+    @classmethod
+    def from_fasta(cls, path: Union[str, Path], collection_id: Optional[str] = None) -> SequenceCollection:
+        p = Path(path)
+        seqs = {}
+        cur_id = None
+        cur_desc = ""
+        cur_lines = []
+        for line in p.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line.startswith(">"):
+                if cur_id:
+                    seqs[cur_id] = Sequence(protein_id=cur_id, sequence="".join(cur_lines), description=cur_desc)
+                parts = line[1:].strip().split(maxsplit=1)
+                cur_id = parts[0] if parts else f"seq_{len(seqs)+1}"
+                cur_desc = parts[1] if len(parts) > 1 else ""
+                cur_lines = []
+            elif line:
+                cur_lines.append(line)
+        if cur_id:
+            seqs[cur_id] = Sequence(protein_id=cur_id, sequence="".join(cur_lines), description=cur_desc)
+        return cls(protein_id=collection_id or p.stem, sequences=seqs)
 
 
 @dataclass

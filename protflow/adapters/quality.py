@@ -1,26 +1,10 @@
 """pLDDT quality filter."""
 
 from __future__ import annotations
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
-import json
-import re
-import numpy as np
+from typing import Any, Dict
 import pandas as pd
-import requests
-import gemmi
 
-from protflow.types import (
-    Sequence,
-    Structure,
-    ResidueScore,
-    Pocket,
-    Alignment,
-    Annotation,
-    Table,
-    Provenance
-)
-from protflow.adapters.residue import AA3_TO_1, AA1_TO_3
+from protflow.types import Structure, Table, Provenance
 
 
 # --- 4. pLDDT Quality Filter ---

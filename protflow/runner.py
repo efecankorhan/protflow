@@ -15,6 +15,7 @@ import logging
 import os
 import shutil
 import subprocess
+import sys
 import time
 from typing import Any, Callable, Dict, Optional, Tuple, Union
 
@@ -97,9 +98,16 @@ class Runner:
             elif hasattr(obj, "sequence") and obj.sequence:
                 hasher.update(obj.sequence.encode())
             elif hasattr(obj, "file_path") and obj.file_path and Path(obj.file_path).exists():
-                hasher.update(Path(obj.file_path).read_bytes())
+                fp = Path(obj.file_path)
+                hasher.update(str(fp.stat().st_size).encode())
+                with open(fp, "rb") as fh:
+                    hasher.update(fh.read(65536))
             elif hasattr(obj, "df") and not obj.df.empty:
                 hasher.update(obj.df.to_json().encode())
+            elif hasattr(obj, "records"):
+                hasher.update(json.dumps(obj.records, sort_keys=True).encode())
+            elif hasattr(obj, "target_id"):
+                hasher.update(json.dumps(obj.to_dict(), sort_keys=True).encode())
 
         return hasher.hexdigest()
 
@@ -232,13 +240,29 @@ class Runner:
             raise RunnerError(f"Manifest '{manifest.name}' specifies local execution but has no 'command'.")
 
         # Context interpolation and universal placeholder replacement
+        out_dir = Path(out_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        str_out = str(out_dir)
+        quoted_out = f'"{str_out}"' if " " in str_out else str_out
         replacements: Dict[str, str] = {
-            "{output_dir}": str(out_dir),
-            "output_dir": str(out_dir),
+            "{output_dir}": str_out if ('"{output_dir}"' in cmd_template or "'{output_dir}'" in cmd_template) else quoted_out,
+            "output_dir": str_out,
         }
         for k, v in inputs.items():
-            if hasattr(v, "sequence") and not getattr(v, "file_path", None):
-                fasta_path = out_dir / f"{v.protein_id}.fasta"
+            if any(ch in str(v.protein_id) for ch in (";", "&", "|", "`", "$", "\n", "\r", ">", "<")):
+                raise RunnerError(f"Security error: Input '{k}' protein_id contains prohibited shell metacharacters: {v.protein_id}")
+            if hasattr(v, "sequences") and not getattr(v, "file_path", None):
+                safe_pid = "".join(c for c in str(v.protein_id) if c.isalnum() or c in ("_", "-", "."))
+                fasta_path = out_dir / f"{safe_pid}.fasta"
+                if not fasta_path.exists():
+                    with open(fasta_path, "w", encoding="utf-8") as f_out:
+                        for s in v.sequences.values():
+                            f_out.write(f">{s.protein_id} {getattr(s, 'description', '')}\n{s.sequence}\n")
+                v_file = str(fasta_path)
+            elif hasattr(v, "sequence") and not getattr(v, "file_path", None):
+                safe_pid = "".join(c for c in str(v.protein_id) if c.isalnum() or c in ("_", "-", "."))
+                fasta_path = out_dir / f"{safe_pid}.fasta"
                 if not fasta_path.exists():
                     with open(fasta_path, "w", encoding="utf-8") as f_out:
                         f_out.write(f">{v.protein_id} {getattr(v, 'description', '')}\n{v.sequence}\n")
@@ -246,12 +270,16 @@ class Runner:
             else:
                 v_file = getattr(v, "file_path", getattr(v, "protein_id", ""))
 
-            replacements[f"{{inputs.{k}.file_path}}"] = str(v_file)
+            str_file = str(v_file)
+            quoted_file = f'"{str_file}"' if " " in str_file else str_file
+            for placeholder in (f"{{inputs.{k}.file_path}}", f"{{inputs.{k}}}", f"{{inputs_{k}}}"):
+                replacements[placeholder] = str_file if (f'"{placeholder}"' in cmd_template or f"'{placeholder}'" in cmd_template) else quoted_file
             replacements[f"{{inputs.{k}.protein_id}}"] = str(v.protein_id)
-            replacements[f"{{inputs.{k}}}"] = str(v_file)
-            replacements[f"{{inputs_{k}}}"] = str(v_file)
 
         for k, v in params.items():
+            if isinstance(v, str) and any(ch in v for ch in (";", "&", "|", "`", "$", "\n", "\r", ">", "<")):
+                # shortcut: reject shell metacharacters in local runner params, upgrade to list-based argv execution
+                raise RunnerError(f"Security error: Parameter '{k}' contains prohibited shell metacharacters: {v}")
             replacements[f"{{parameters.{k}}}"] = str(v)
             replacements[f"{{param_{k}}}"] = str(v)
             replacements[f"{{param.{k}}}"] = str(v)
@@ -265,13 +293,28 @@ class Runner:
 
         # Check if the command's primary binary exists on PATH or shell
         binary_name = cmd.split()[0] if cmd else ""
-        if shutil.which(binary_name) is None and binary_name not in ("python", "python3"):
+        if binary_name in ("python", "python3"):
+            cmd = f'"{sys.executable}"' + cmd[len(binary_name):]
+            binary_name = sys.executable
+
+        if shutil.which(binary_name) is None and binary_name not in (sys.executable, "python", "python3"):
             logger.info("Binary '%s' not found on PATH. Falling back to native adapter execution.", binary_name)
             return {"native_fallback": True, "synthetic": True, "output_dir": str(out_dir)}
 
-        res = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+        timeout = manifest.execution.timeout
+        try:
+            res = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=timeout)
+        except subprocess.TimeoutExpired:
+            raise RunnerError(f"Local command timed out after {timeout} seconds: {cmd}")
+
         if res.returncode != 0:
-            if "not recognized as an internal or external command" in res.stderr:
+            err_lower = res.stderr.lower()
+            if (
+                res.returncode in (9009, 127, 126)
+                or "not recognized as an internal or external command" in err_lower
+                or "python was not found" in err_lower
+                or "cannot find the file" in err_lower
+            ):
                 logger.info("Binary '%s' not available in shell. Falling back to native adapter execution.", binary_name)
                 return {"native_fallback": True, "synthetic": True, "output_dir": str(out_dir)}
             raise RunnerError(f"Local command failed (code {res.returncode}): {res.stderr}\nCommand: {cmd}")
@@ -294,7 +337,11 @@ class Runner:
         # If container engine is present, run inside container; otherwise fallback / run command
         if self.container_engine == "docker":
             cmd = f'docker run --rm -v "{abs_out}:/work" -w /work {image} {cmd_template}'
-            res = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+            timeout = manifest.execution.timeout
+            try:
+                res = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=timeout)
+            except subprocess.TimeoutExpired:
+                raise RunnerError(f"Docker command timed out after {timeout} seconds: {cmd}")
             if res.returncode != 0:
                 raise RunnerError(f"Docker command failed: {res.stderr}")
             return res.stdout or str(out_dir)
@@ -442,3 +489,17 @@ class Runner:
                 obj.attach_provenance(prov)
             outputs[name] = obj
         return outputs
+
+
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="ProtFlow Manifest Runner")
+    parser.add_argument("--manifest", required=True, help="Path to tool manifest YAML")
+    parser.add_argument("--sample", default="SAMPLE", help="Sample/Protein identifier")
+    parser.add_argument("--params", default="{}", help="JSON string of parameter overrides")
+    args = parser.parse_args()
+    m = Manifest.from_yaml(args.manifest)
+    p_overrides = json.loads(args.params)
+    r = Runner()
+    res = r.run(m, inputs={}, parameters=p_overrides)
+    print(f"Executed {m.name}: produced {list(res.keys())}")

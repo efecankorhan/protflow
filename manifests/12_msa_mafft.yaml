@@ -1,0 +1,13 @@
+name: msa_mafft
+version: "7.525"
+description: Gold-standard Multiple Sequence Alignment using MAFFT (Katoh et al. 2013) with per-column Shannon conservation
+inputs:
+  sequences: SequenceCollection
+outputs:
+  alignment: Alignment
+  aligned_sequences: SequenceCollection
+  conservation: Table
+execution:
+  type: local
+  command: "mafft --auto {inputs.sequences.file_path}"
+adapter: protflow.adapters.msa:parse_mafft

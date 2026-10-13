@@ -4,7 +4,7 @@ Guards against silent index drifts, chain ID mismatches, and auth_seq_id vs labe
 """
 
 from __future__ import annotations
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 import gemmi
 import pandas as pd
 from protflow.types import Sequence, Structure
@@ -88,6 +88,11 @@ def validate_residue_table(
 
     # Normalize column names
     norm_df = df.copy()
+    if norm_df.empty:
+        norm_df["resname"] = []
+        norm_df["one_letter"] = []
+        return norm_df
+
     if "res_id" in norm_df.columns and "auth_seq_id" not in norm_df.columns:
         norm_df["auth_seq_id"] = norm_df["res_id"]
     if "auth_seq_id" not in norm_df.columns:

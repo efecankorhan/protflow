@@ -306,4 +306,27 @@ def test_ui_flattened_manifest_testing_and_strict_json_compliance(ui_test_server
     assert parsed["vol"] is None
 
 
+def test_ui_structure_collection_serialization(ui_test_server):
+    """Verify that StructureCollection produces structured JSON in node outputs."""
+    manifest = {
+        "manifest": {
+            "name": "structure_coll_test",
+            "version": "1.0.0",
+            "inputs": {"structure": "StructureCollection", "residue_scores": "ResidueScore"},
+            "outputs": {"structure": "StructureCollection", "quality_table": "Table"},
+            "execution": {"type": "local", "command": "python -c \"pass\""},
+            "adapter": "protflow.adapters.quality:parse_plddt_filter"
+        }
+    }
+    req_post = urllib.request.Request(
+        f"{ui_test_server}/api/manifest/test",
+        data=json.dumps(manifest).encode("utf-8"),
+        headers={"Content-Type": "application/json"}
+    )
+    res = urllib.request.urlopen(req_post)
+    test_res = json.loads(res.read().decode("utf-8"))
+    assert test_res["status"] == "PASS"
+    assert "StructureCollection" in test_res["outputs"]["structure"]
+
+
 

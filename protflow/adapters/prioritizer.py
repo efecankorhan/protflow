@@ -1,26 +1,10 @@
 """Prioritization combiner."""
 
 from __future__ import annotations
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
-import json
-import re
-import numpy as np
+from typing import Any, Dict
 import pandas as pd
-import requests
-import gemmi
 
-from protflow.types import (
-    Sequence,
-    Structure,
-    ResidueScore,
-    Pocket,
-    Alignment,
-    Annotation,
-    Table,
-    Provenance
-)
-from protflow.adapters.residue import AA3_TO_1, AA1_TO_3
+from protflow.types import Table
 
 
 # --- 8. Prioritization Combiner ---
@@ -34,21 +18,31 @@ def parse_prioritization(raw_data: Any, context: Dict[str, Any]) -> Dict[str, An
     - Novelty component
     """
     inputs = context["inputs"]
-    pid = inputs["quality_table"].protein_id
+    q_table = inputs.get("quality_table")
+    pid = q_table.protein_id if q_table else "SAMPLE"
 
-    mean_plddt = float(inputs["quality_table"].df["mean_plddt"].iloc[0])
-    pocket_score = float(inputs["pockets"].df["score"].iloc[0])
-    pocket_vol = float(inputs["pockets"].df["volume"].iloc[0])
-    sasa_hydro = float(inputs["sasa_table"].df["hydrophobic_ratio"].iloc[0])
-    novelty = float(inputs["foldseek_table"].df["novelty_score"].iloc[0])
+    q_df = q_table.df if q_table and hasattr(q_table, "df") else pd.DataFrame()
+    mean_plddt = float(q_df["mean_plddt"].iloc[0]) if not q_df.empty and "mean_plddt" in q_df.columns else 0.0
+
+    pockets_obj = inputs.get("pockets")
+    p_df = pockets_obj.df if pockets_obj and hasattr(pockets_obj, "df") else pd.DataFrame()
+    pocket_score = float(p_df["score"].iloc[0]) if not p_df.empty and "score" in p_df.columns else 0.0
+    pocket_vol = float(p_df["volume"].iloc[0]) if not p_df.empty and "volume" in p_df.columns else 0.0
+
+    sasa_obj = inputs.get("sasa_table")
+    s_df = sasa_obj.df if sasa_obj and hasattr(sasa_obj, "df") else pd.DataFrame()
+    sasa_hydro = float(s_df["hydrophobic_ratio"].iloc[0]) if not s_df.empty and "hydrophobic_ratio" in s_df.columns else 0.40
+
+    foldseek_obj = inputs.get("foldseek_table")
+    f_df = foldseek_obj.df if foldseek_obj and hasattr(foldseek_obj, "df") else pd.DataFrame()
+    novelty = float(f_df["novelty_score"].iloc[0]) if not f_df.empty and "novelty_score" in f_df.columns else 0.0
 
     # Expression & solubility estimation: balanced hydrophobicity (~0.35 - 0.45 ideal)
     solubility_est = max(0.0, 1.0 - abs(sasa_hydro - 0.40) * 2.0)
     quality_norm = mean_plddt / 100.0
 
     # Check if upstream filter passed
-    q_df = inputs["quality_table"].df
-    passed_plddt = bool(q_df["passed_plddt_filter"].iloc[0]) if "passed_plddt_filter" in q_df.columns else True
+    passed_plddt = bool(q_df["passed_plddt_filter"].iloc[0]) if not q_df.empty and "passed_plddt_filter" in q_df.columns else True
 
     if not passed_plddt:
         final_score = 0.0

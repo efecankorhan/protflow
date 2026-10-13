@@ -7,6 +7,8 @@ step-by-step pipeline execution with previews, and benchmark comparison charts.
 
 from __future__ import annotations
 from http.server import HTTPServer, BaseHTTPRequestHandler
+from socketserver import ThreadingMixIn
+import mimetypes
 from pathlib import Path
 from datetime import datetime, timezone
 import json
@@ -14,7 +16,7 @@ import logging
 import math
 import time
 import urllib.parse
-from typing import Any
+from typing import Any, Optional
 import pandas as pd
 import yaml
 
@@ -130,13 +132,14 @@ class ProtFlowUIHandler(BaseHTTPRequestHandler):
         else:
             self.send_error(404, "Unknown API endpoint")
 
-    def _serve_file(self, file_path: Path, content_type: str = "text/plain"):
+    def _serve_file(self, file_path: Path, content_type: Optional[str] = None):
         if not file_path.exists():
             self.send_error(404, "Not Found")
             return
+        ct = content_type or mimetypes.guess_type(str(file_path))[0] or "text/plain"
         content = file_path.read_bytes()
         self.send_response(200)
-        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Type", ct)
         self.send_header("Content-Length", str(len(content)))
         self.end_headers()
         self.wfile.write(content)
@@ -310,6 +313,10 @@ class ProtFlowUIHandler(BaseHTTPRequestHandler):
             for k, v in outputs.items():
                 if hasattr(v, "sequence"):
                     out_summary[k] = f"Sequence ({len(v.sequence)} aa)"
+                elif hasattr(v, "sequences"):
+                    out_summary[k] = f"SequenceCollection ({len(v.sequences)} sekans)"
+                elif hasattr(v, "structures"):
+                    out_summary[k] = f"StructureCollection ({len(v.structures)} yapı)"
                 elif hasattr(v, "file_path"):
                     out_summary[k] = f"Structure ({Path(v.file_path).name})"
                 elif hasattr(v, "df"):
@@ -440,8 +447,8 @@ class ProtFlowUIHandler(BaseHTTPRequestHandler):
                     PipelineStep(
                         name=s["name"],
                         manifest_path=s.get("manifest") or s.get("manifest_path"),
-                        inputs=s.get("inputs", {}),
-                        parameters=s.get("parameters", {}),
+                        inputs=s.get("inputs") or {},
+                        parameters=s.get("parameters") or {},
                         condition=s.get("condition")
                     )
                     for s in data["pipeline"]["steps"]
@@ -465,8 +472,13 @@ class ProtFlowUIHandler(BaseHTTPRequestHandler):
             step_results = []
             node_outputs = {}
             state = {}
+            cds_records = data.get("cds_records")
             if dna:
-                state["genome"] = Sequence(protein_id=pid, sequence=dna, description=f"Host genome ({organism_id or 'custom'})")
+                g_seq = Sequence(protein_id=pid, sequence=dna, description=f"Host genome ({organism_id or 'custom'})")
+                if cds_records:
+                    from protflow.types import Provenance
+                    g_seq.attach_provenance(Provenance(tool_name="prior_input", parameters={"curated_cds": cds_records}))
+                state["genome"] = g_seq
 
             # Step-by-step execution to capture timing, status & preview
             for step in pipe.steps:
@@ -482,14 +494,24 @@ class ProtFlowUIHandler(BaseHTTPRequestHandler):
                     })
                     continue
 
+                m_path = pipe.base_dir / step.manifest_path
+                manifest = Manifest.from_yaml(m_path)
+
                 if step.name == "prior_input":
+                    if step.parameters is None:
+                        step.parameters = {}
                     if dna:
                         step.parameters["genome_dna"] = dna
                     if organism_id:
                         step.parameters["organism"] = organism_id
+                    if cds_records:
+                        step.parameters["curated_cds"] = cds_records
 
-                m_path = pipe.base_dir / step.manifest_path
-                manifest = Manifest.from_yaml(m_path)
+                if manifest.name == "protein_select":
+                    if step.parameters is None:
+                        step.parameters = {}
+                    if not step.parameters.get("protein_id"):
+                        step.parameters["protein_id"] = "auto"
                 step_inputs = {}
                 for p, k in step.inputs.items():
                     if k in state:
@@ -536,7 +558,8 @@ class ProtFlowUIHandler(BaseHTTPRequestHandler):
                     total = gp.get("total_genes", len(genes_obj.df) if hasattr(genes_obj, "df") else 0)
                     rev = gp.get("reverse_strand", int((genes_obj.df["strand"] == "-").sum()) if hasattr(genes_obj, "df") and "strand" in genes_obj.df.columns else 0)
                     partial = gp.get("partial", int(genes_obj.df["partial"].sum()) if hasattr(genes_obj, "df") and "partial" in genes_obj.df.columns else 0)
-                    preview_text = f"{total} gen ({rev} ters iplik, {partial} kısmi)"
+                    seq_count = len(outputs["proteins"]) if "proteins" in outputs else (len(outputs["protein"].sequence) if "protein" in outputs else total)
+                    preview_text = f"{total} gen ({rev} ters iplik, {partial} kısmi) | Sekans: {seq_count}"
                 elif ("protein" in outputs or "proteins" in outputs) and "filter_table" in outputs:
                     cnt_in = filter_stats.get("input_count", 1) if filter_stats else 1
                     cnt_pass = filter_stats.get("passed_count", 1) if filter_stats else 1
@@ -550,7 +573,10 @@ class ProtFlowUIHandler(BaseHTTPRequestHandler):
                     mean_p = round(outputs['quality_table'].df['mean_plddt'].iloc[0], 1) if not outputs['quality_table'].df.empty and 'mean_plddt' in outputs['quality_table'].df.columns else 0
                     preview_text = f"Kalite: {cnt_in} Girdi → {cnt_pass} Geçti (pLDDT: {mean_p})"
                 elif "protein" in outputs:
-                    preview_text = f"Sekans: {len(outputs['protein'].sequence)} aa"
+                    p_obj = outputs["protein"]
+                    prov_p = getattr(getattr(p_obj, "provenance", None), "parameters", {}) or {}
+                    tag = " (Otomatik)" if prov_p.get("auto_selected") else ""
+                    preview_text = f"Seçilen: {p_obj.protein_id} ({len(p_obj.sequence)} aa{tag})"
                 elif "residue_scores" in outputs and "structure" in outputs:
                     mean_plddt = round(outputs['residue_scores'].df['score'].mean(), 1) if not outputs['residue_scores'].df.empty and 'score' in outputs['residue_scores'].df.columns else 0
                     preview_text = f"Yapı Hazır | Ort. pLDDT: {mean_plddt}"
@@ -621,10 +647,24 @@ class ProtFlowUIHandler(BaseHTTPRequestHandler):
                             "count": len(out_v.records),
                             "records": out_v.records
                         }
+                    elif hasattr(out_v, "structures"):
+                        serialized_outputs[out_k] = {
+                            "type": "StructureCollection",
+                            "protein_id": getattr(out_v, "protein_id", pid),
+                            "count": len(out_v.structures),
+                            "records": [
+                                {
+                                    "protein_id": s.protein_id,
+                                    "file_name": Path(s.file_path).name if s.file_path else "",
+                                    "format": getattr(s, "format", "cif"),
+                                }
+                                for s in out_v.structures.values()
+                            ],
+                        }
                     elif hasattr(out_v, "file_path"):
                         fpath = Path(out_v.file_path)
                         pdb_content = ""
-                        if fpath.exists():
+                        if fpath.exists() and fpath.stat().st_size <= 5_000_000:
                             try:
                                 pdb_content = fpath.read_text(encoding="utf-8", errors="replace")
                             except Exception:
@@ -635,6 +675,12 @@ class ProtFlowUIHandler(BaseHTTPRequestHandler):
                             "file_name": fpath.name,
                             "format": getattr(out_v, "format", "pdb"),
                             "pdb": pdb_content
+                        }
+                    elif hasattr(out_v, "to_dict"):
+                        serialized_outputs[out_k] = {
+                            "type": type(out_v).__name__,
+                            "protein_id": getattr(out_v, "protein_id", pid),
+                            **out_v.to_dict()
                         }
                     else:
                         serialized_outputs[out_k] = {
@@ -678,8 +724,12 @@ class ProtFlowUIHandler(BaseHTTPRequestHandler):
 
 
 
+class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
+    daemon_threads = True
+
+
 def start_ui_server(port: int = 8080):
-    server = HTTPServer(("127.0.0.1", port), ProtFlowUIHandler)
+    server = ThreadedHTTPServer(("127.0.0.1", port), ProtFlowUIHandler)
     print(f"\n[+] ProtFlow ComfyUI Node Editor çalışıyor: http://127.0.0.1:{port}")
     print("[*] Tarayıcınızda açıp tipli düğüm akışlarını düzenleyebilirsiniz. (Durdurmak için Ctrl+C)")
     try:

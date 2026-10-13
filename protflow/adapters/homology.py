@@ -24,9 +24,9 @@ def find_mmseqs() -> list[str]:
     exe = os.environ.get("MMSEQS") or shutil.which("mmseqs")
     if exe:
         return [exe]
-    bat = PROJECT_ROOT / "tools" / "mmseqs" / "mmseqs.bat"
-    if bat.exists():
-        return [str(bat)]
+    for cand in (PROJECT_ROOT / "tools" / "mmseqs" / "mmseqs.bat", PROJECT_ROOT / "tools" / "mmseqs2" / "mmseqs.bat"):
+        if cand.exists():
+            return [str(cand)]
     raise FileNotFoundError("mmseqs bulunamadı: PATH'e ekleyin, MMSEQS ortam değişkenini ayarlayın veya tools/mmseqs altına kurun.")
 
 
@@ -41,11 +41,18 @@ def resolve_target(target: str) -> Path:
     db.mkdir(parents=True, exist_ok=True)
     fa = db / "uniprot_sprot.fasta"
     if not fa.exists():
-        gz = db / "uniprot_sprot.fasta.gz"
-        urllib.request.urlretrieve(SWISSPROT_URL, gz)
-        with gzip.open(gz, "rb") as src, open(fa, "wb") as dst:
-            shutil.copyfileobj(src, dst)
-        gz.unlink()
+        tmp_gz = db / "uniprot_sprot.fasta.gz.tmp"
+        tmp_fa = db / "uniprot_sprot.fasta.tmp"
+        try:
+            urllib.request.urlretrieve(SWISSPROT_URL, tmp_gz)
+            with gzip.open(tmp_gz, "rb") as src, open(tmp_fa, "wb") as dst:
+                shutil.copyfileobj(src, dst)
+            tmp_fa.replace(fa)
+        finally:
+            if tmp_gz.exists():
+                tmp_gz.unlink()
+            if tmp_fa.exists():
+                tmp_fa.unlink()
     return fa
 
 

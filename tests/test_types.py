@@ -124,3 +124,27 @@ def test_table_parquet_io(tmp_path):
     loaded = Table.from_parquet(out_file)
     assert loaded.protein_id == "P1"
     assert loaded.df["solubility"].iloc[0] == 0.76
+
+
+def test_sequence_from_fasta_multi_record(tmp_path):
+    from protflow.types import SequenceCollection
+    multi_fa = tmp_path / "multi.fasta"
+    multi_fa.write_text(">seq1 First protein\nACDEF\n>seq2 Second protein\nGHIKL\n", encoding="utf-8")
+
+    # Sequence.from_fasta reads only the first record
+    s1 = Sequence.from_fasta(multi_fa)
+    assert s1.protein_id == "seq1"
+    assert s1.sequence == "ACDEF"
+
+    # SequenceCollection.from_fasta reads all records
+    coll = SequenceCollection.from_fasta(multi_fa)
+    assert len(coll.sequences) == 2
+    assert coll.sequences["seq1"].sequence == "ACDEF"
+    assert coll.sequences["seq2"].sequence == "GHIKL"
+
+
+def test_structure_empty_file_path():
+    st = Structure(protein_id="EMPTY", file_path="")
+    with pytest.raises(ValueError, match="empty file_path"):
+        st.to_gemmi_structure()
+

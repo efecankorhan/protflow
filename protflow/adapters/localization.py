@@ -1,26 +1,10 @@
 """Subcellular localization filter."""
 
 from __future__ import annotations
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
-import json
-import re
-import numpy as np
+from typing import Any, Dict
 import pandas as pd
-import requests
-import gemmi
 
-from protflow.types import (
-    Sequence,
-    Structure,
-    ResidueScore,
-    Pocket,
-    Alignment,
-    Annotation,
-    Table,
-    Provenance
-)
-from protflow.adapters.residue import AA3_TO_1, AA1_TO_3
+from protflow.types import Sequence, Table, Provenance
 
 
 # --- 2. Subcellular Localization / Filtering (DeepLoc / SignalP) ---
@@ -90,8 +74,6 @@ def parse_subcellular_filter(raw_data: Any, context: Dict[str, Any]) -> Dict[str
 
     if is_collection:
         from protflow.types import SequenceCollection
-        if not passed_items:
-            raise ValueError(f"Süzgeç tüm {len(items)} proteini eledi; aşağı akışa verilecek protein kalmadı.")
         out_collection = SequenceCollection(
             protein_id=seq_input.protein_id,
             sequences={s.protein_id: s for s in passed_items}

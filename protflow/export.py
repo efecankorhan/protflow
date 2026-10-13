@@ -4,6 +4,7 @@ Translates manifests into native pipeline specifications without bloat.
 """
 
 from __future__ import annotations
+from datetime import datetime
 from pathlib import Path
 from typing import List, Union
 from protflow.manifest import Manifest
@@ -105,7 +106,8 @@ def export_sequence_to_genbank(cds_seq, out_path: Union[str, Path], organism: st
         origin_lines.append(f"{i+1:9d} {spaced}")
     origin_block = "\n".join(origin_lines)
 
-    content = f"""LOCUS       {cds_seq.protein_id[:16]:<16} {nt_len} bp    DNA     linear   SYN 11-OCT-2026
+    today_str = datetime.now().strftime("%d-%b-%Y").upper()
+    content = f"""LOCUS       {cds_seq.protein_id[:16]:<16} {nt_len} bp    DNA     linear   SYN {today_str}
 DEFINITION  {cds_seq.description or cds_seq.protein_id}.
 ACCESSION   {cds_seq.protein_id}
 VERSION     {cds_seq.protein_id}.1
