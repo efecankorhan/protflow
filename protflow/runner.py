@@ -18,6 +18,7 @@ import subprocess
 import sys
 import time
 from typing import Any, Callable, Dict, Optional, Tuple, Union
+import urllib.parse
 
 import requests
 
@@ -95,6 +96,16 @@ class Runner:
                 for s_id, s in sorted(obj.sequences.items()):
                     hasher.update(s_id.encode())
                     hasher.update(s.sequence.encode())
+            elif hasattr(obj, "structures"):
+                for s_id, s in sorted(obj.structures.items()):
+                    hasher.update(s_id.encode())
+                    if getattr(s, "file_path", None) and Path(s.file_path).exists():
+                        fp = Path(s.file_path)
+                        hasher.update(str(fp.stat().st_size).encode())
+                        with open(fp, "rb") as fh:
+                            hasher.update(fh.read(65536))
+                    else:
+                        hasher.update(str(getattr(s, "file_path", "")).encode())
             elif hasattr(obj, "sequence") and obj.sequence:
                 hasher.update(obj.sequence.encode())
             elif hasattr(obj, "file_path") and obj.file_path and Path(obj.file_path).exists():
@@ -111,6 +122,22 @@ class Runner:
 
         return hasher.hexdigest()
 
+    @staticmethod
+    def _is_compatible_type(obj: Any, expected_cls: type) -> bool:
+        if isinstance(obj, expected_cls):
+            return True
+        name = type(obj).__name__
+        exp = expected_cls.__name__
+        if exp == "Structure" and name == "StructureCollection":
+            return True
+        if exp == "Sequence" and name == "SequenceCollection":
+            return True
+        if exp == "SequenceCollection" and name == "Sequence":
+            return True
+        if exp == "StructureCollection" and name == "Structure":
+            return True
+        return False
+
     def run(
         self,
         manifest: Manifest,
@@ -126,17 +153,27 @@ class Runner:
         if parameters:
             params.update(parameters)
 
-        # 1. Type check inputs
+        # 1. Type check inputs & auto-wrap single items to collections if needed
+        inputs = dict(inputs)
         for in_name, in_type in manifest.inputs.items():
             if in_name not in inputs:
                 raise RunnerError(f"Missing required input '{in_name}' of type '{in_type}' for tool '{manifest.name}'.")
             expected_cls = TYPE_REGISTRY[in_type]
-            if not isinstance(inputs[in_name], expected_cls):
+            if not self._is_compatible_type(inputs[in_name], expected_cls):
                 raise RunnerError(
                     f"Input '{in_name}' expected type {expected_cls.__name__}, got {type(inputs[in_name]).__name__}."
                 )
+            if expected_cls.__name__ == "SequenceCollection" and type(inputs[in_name]).__name__ == "Sequence":
+                from protflow.types import SequenceCollection
+                s = inputs[in_name]
+                inputs[in_name] = SequenceCollection(protein_id=s.protein_id, sequences={s.protein_id: s})
+            elif expected_cls.__name__ == "StructureCollection" and type(inputs[in_name]).__name__ == "Structure":
+                from protflow.types import StructureCollection
+                s = inputs[in_name]
+                inputs[in_name] = StructureCollection(protein_id=s.protein_id, structures={s.protein_id: s})
 
         # Determine primary protein_id
+
         if inputs:
             first_input = next(iter(inputs.values()))
             primary_protein_id = first_input.protein_id
@@ -170,7 +207,8 @@ class Runner:
                     pass
 
         # 4. Dispatch execution
-        out_dir = Path(output_dir or f".protflow_work/{manifest.name}_{primary_protein_id}")
+        safe_pid = "".join(c if c.isalnum() or c in "._-" else "_" for c in primary_protein_id)
+        out_dir = Path(output_dir or f".protflow_work/{manifest.name}_{safe_pid}")
         out_dir.mkdir(parents=True, exist_ok=True)
 
         start_time = time.time()
@@ -211,7 +249,7 @@ class Runner:
             if out_name not in outputs:
                 raise RunnerError(f"Adapter did not produce declared output '{out_name}'.")
             expected_cls = TYPE_REGISTRY[out_type]
-            if not isinstance(outputs[out_name], expected_cls):
+            if not self._is_compatible_type(outputs[out_name], expected_cls):
                 raise RunnerError(
                     f"Output '{out_name}' expected {expected_cls.__name__}, got {type(outputs[out_name]).__name__}."
                 )
@@ -246,7 +284,13 @@ class Runner:
         if not cmd_template:
             raise RunnerError(f"Manifest '{manifest.name}' specifies local execution but has no 'command'.")
 
-        # Context interpolation and universal placeholder replacement
+    def _format_command(
+        self,
+        cmd_template: str,
+        inputs: Dict[str, BaseBioType],
+        params: Dict[str, Any],
+        out_dir: Path
+    ) -> str:
         out_dir = Path(out_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -296,7 +340,20 @@ class Runner:
         for placeholder, val in replacements.items():
             cmd = cmd.replace(placeholder, val)
 
-        cmd = os.path.expandvars(cmd)
+        return os.path.expandvars(cmd)
+
+    def _run_local(
+        self,
+        manifest: Manifest,
+        inputs: Dict[str, BaseBioType],
+        params: Dict[str, Any],
+        out_dir: Path
+    ) -> Any:
+        cmd_template = manifest.execution.command
+        if not cmd_template:
+            raise RunnerError(f"Manifest '{manifest.name}' specifies local execution but has no 'command'.")
+
+        cmd = self._format_command(cmd_template, inputs, params, out_dir)
 
         # Check if the command's primary binary exists on PATH or shell
         binary_name = cmd.split()[0] if cmd else ""
@@ -341,9 +398,10 @@ class Runner:
             raise RunnerError("Container execution requires both 'image' and 'command'.")
 
         abs_out = out_dir.resolve()
+        formatted_cmd = self._format_command(cmd_template, inputs, params, out_dir)
         # If container engine is present, run inside container; otherwise fallback / run command
         if self.container_engine == "docker":
-            cmd = f'docker run --rm -v "{abs_out}:/work" -w /work {image} {cmd_template}'
+            cmd = f'docker run --rm -v "{abs_out}:/work" -w /work {image} {formatted_cmd}'
             timeout = manifest.execution.timeout
             try:
                 res = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=timeout)
@@ -370,10 +428,12 @@ class Runner:
         # Format URL with inputs & params
         fmt_args = {}
         for k, v in inputs.items():
-            fmt_args[f"inputs.{k}.protein_id"] = v.protein_id
-            fmt_args[k] = v.protein_id
+            pid = getattr(v, "protein_id", str(v))
+            quoted_pid = urllib.parse.quote(str(pid), safe="")
+            fmt_args[f"inputs.{k}.protein_id"] = quoted_pid
+            fmt_args[k] = quoted_pid
         for k, v in params.items():
-            fmt_args[k] = v
+            fmt_args[k] = urllib.parse.quote(str(v), safe="") if isinstance(v, (str, int, float)) else v
 
         url = url_template
         for k, v in fmt_args.items():
@@ -446,12 +506,19 @@ class Runner:
                 serialized["format"] = getattr(obj, "format", "cif")
             data["outputs"][name] = serialized
 
-        with open(cache_file, "w", encoding="utf-8") as f:
+        tmp_file = cache_file.with_suffix(".tmp")
+        with open(tmp_file, "w", encoding="utf-8") as f:
             json.dump(data, f)
+        tmp_file.replace(cache_file)
 
     def _load_cached_outputs(self, cache_file: Path, manifest: Manifest) -> Dict[str, BaseBioType]:
-        with open(cache_file, "r", encoding="utf-8") as f:
-            data = json.load(f)
+        try:
+            with open(cache_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except (json.JSONDecodeError, ValueError):
+            logger.warning("Cache file %s corrupted; removing and recomputing.", cache_file)
+            cache_file.unlink(missing_ok=True)
+            raise FileNotFoundError(f"Corrupted cache file removed: {cache_file}")
 
         prov = Provenance.from_dict(data["provenance"])
         prov.parameters["cache_hit"] = True
@@ -514,10 +581,29 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="ProtFlow Manifest Runner")
     parser.add_argument("--manifest", required=True, help="Path to tool manifest YAML")
     parser.add_argument("--sample", default="SAMPLE", help="Sample/Protein identifier")
+    parser.add_argument("--input", action="append", default=[], help="Input mapping in port=path format")
     parser.add_argument("--params", default="{}", help="JSON string of parameter overrides")
+    parser.add_argument("--outdir", default=".", help="Output directory")
     args = parser.parse_args()
     m = Manifest.from_yaml(args.manifest)
     p_overrides = json.loads(args.params)
+
+    in_dict = {}
+    for item in args.input:
+        if "=" in item:
+            port, path_str = item.split("=", 1)
+            in_type = m.inputs.get(port, "")
+            p_obj = Path(path_str)
+            if in_type in ("Sequence", "Sequence[]", "SequenceCollection"):
+                from protflow.types import Sequence, SequenceCollection
+                in_dict[port] = SequenceCollection.from_fasta(p_obj, collection_id=args.sample) if "Collection" in in_type or "[]" in in_type else Sequence.from_fasta(p_obj, protein_id=args.sample)
+            elif in_type in ("Structure", "Structure[]", "StructureCollection"):
+                from protflow.types import Structure, StructureCollection
+                in_dict[port] = Structure(protein_id=args.sample, file_path=str(p_obj), format="pdb" if p_obj.suffix.lower() == ".pdb" else "cif")
+            elif in_type in TYPE_REGISTRY and hasattr(TYPE_REGISTRY[in_type], "from_parquet"):
+                in_dict[port] = TYPE_REGISTRY[in_type].from_parquet(p_obj, protein_id=args.sample)
+
     r = Runner()
-    res = r.run(m, inputs={}, parameters=p_overrides)
+    res = r.run(m, inputs=in_dict, parameters=p_overrides, output_dir=args.outdir)
     print(f"Executed {m.name}: produced {list(res.keys())}")
+

@@ -21,13 +21,19 @@ class StructureNotFoundError(RuntimeError):
     pass
 
 
-def resolve_uniprot_afdb(pid: str, desc: str = "", organism: str = "") -> Optional[Dict[str, Any]]:
+def resolve_uniprot_afdb(pid: str, desc: str = "", organism: str = "", expected_len: int = 0) -> Optional[Dict[str, Any]]:
     """
     Literature-standard resolver from NCBI/RefSeq/gene accessions to UniProt and AlphaFold DB models.
     Queries UniProtKB search API by accession, organism, or gene symbol, then retrieves matching AFDB entry.
     """
     clean_pid = pid.split('.')[0].strip()
     headers = {"User-Agent": "ProtFlow/1.0 (bio-pipeline-client)"}
+
+    def _length_matches(item_dict: Dict[str, Any]) -> bool:
+        if expected_len <= 0:
+            return True
+        u_len = (item_dict.get("sequence") or {}).get("length", 0)
+        return bool(u_len and abs(u_len - expected_len) <= max(20, int(expected_len * 0.20)))
 
     # 1. Direct UniProt accession check (P0A855, B1GYK3, etc.)
     if re.match(r"^[OPQ][0-9][A-Z0-9]{3}[0-9]$|^[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2}$", clean_pid, re.I):
@@ -40,13 +46,18 @@ def resolve_uniprot_afdb(pid: str, desc: str = "", organism: str = "") -> Option
         except Exception:
             pass
 
-    # 2. Search UniProtKB by PID / accession (skip generic internal tokens like g1, orf1)
-    is_generic_token = bool(re.match(r"^(g\d+|gene(_\d+)?|orf\d+|cds\d+|frag\d+|query)$", clean_pid, re.I)) or len(clean_pid) < 4
+    # 2. Search UniProtKB by PID / accession (skip generic internal tokens like g1, *_g1, *_0001, frag1)
+    is_generic_token = (
+        bool(re.search(r"(^(g\d+|gene(_\d+)?|orf\d*|cds\d*|frag\d*|query|sample|test_prot)|_g\d+$|_\d{4}$|frag\d+)", clean_pid, re.I))
+        or len(clean_pid) < 4
+    )
     if not is_generic_token:
         try:
             r = requests.get("https://rest.uniprot.org/uniprotkb/search", params={"query": clean_pid, "format": "json", "size": 1}, headers=headers, timeout=10)
             if r.ok:
                 for item in r.json().get("results", []):
+                    if not _length_matches(item):
+                        continue
                     acc = item.get("primaryAccession")
                     if acc:
                         r_af = requests.get(f"https://alphafold.ebi.ac.uk/api/prediction/{acc}", timeout=10)
@@ -57,7 +68,7 @@ def resolve_uniprot_afdb(pid: str, desc: str = "", organism: str = "") -> Option
         except Exception:
             pass
 
-    # 3. Search UniProtKB by organism and gene / product
+    # 3. Search UniProtKB by organism and specific gene / product
     org = organism or ""
     if not org and "|" in desc:
         candidate_part = desc.split("|")[0].strip()
@@ -73,23 +84,29 @@ def resolve_uniprot_afdb(pid: str, desc: str = "", organism: str = "") -> Option
         if m:
             org = m.group(1)
 
-    first_word = desc.split()[0] if desc else ""
-    gene_symbol = first_word if first_word and not first_word.startswith("(") and len(first_word) < 15 else ""
-    prod_m = re.search(r"(cytochrome|kinase|synthase|oxidase|dehydrogenase|transferase|hydrolase|glycoprotein|capsid|lyase|isomerase|ligase|spike)", desc, re.I)
+    gene_part = desc.split("|")[1].strip() if "|" in desc else desc.strip()
+    first_word = gene_part.split()[0] if gene_part else ""
+    is_generic_gene = bool(re.match(
+        r"^(g\d+|gene(_\d+)?|orf\d*|cds\d*|frag\d*|putative|hypothetical|augustus|predicted|bacterial|host|custom|unknown|protein)$",
+        first_word,
+        re.I,
+    ))
+    gene_symbol = first_word if (first_word and not is_generic_gene and not first_word.startswith("(") and len(first_word) < 15) else ""
+    prod_m = re.search(r"(cytochrome|kinase|synthase|oxidase|dehydrogenase|transferase|hydrolase|glycoprotein|capsid|lyase|isomerase|ligase|spike)", gene_part, re.I)
     prod = prod_m.group(1) if prod_m else ""
 
     queries = []
     if org and (gene_symbol or prod):
         term = f"{gene_symbol} {prod}".strip()
         queries.append(f'organism_name:"{org}" AND ({term})')
-    if org:
-        queries.append(f'organism_name:"{org}"')
 
     for q in queries:
         try:
             r = requests.get("https://rest.uniprot.org/uniprotkb/search", params={"query": q, "format": "json", "size": 3}, headers=headers, timeout=10)
             if r.ok:
                 for item in r.json().get("results", []):
+                    if not _length_matches(item):
+                        continue
                     acc = item.get("primaryAccession")
                     if acc:
                         r_af = requests.get(f"https://alphafold.ebi.ac.uk/api/prediction/{acc}", timeout=10)
@@ -247,7 +264,8 @@ def parse_alphafold_fetcher(raw_data: Any, context: Dict[str, Any]) -> Dict[str,
             resolved = resolve_uniprot_afdb(
                 pid=pid,
                 desc=getattr(protein_obj, "description", "") or "",
-                organism=org_candidate
+                organism=org_candidate,
+                expected_len=len(getattr(protein_obj, "sequence", "") or "")
             )
             if resolved and resolved.get("cifUrl"):
                 cif_url = resolved["cifUrl"]
@@ -338,4 +356,8 @@ def parse_rfdiffusion(raw_data: Any, context: Dict[str, Any]) -> Dict[str, Any]:
     designed = Structure(protein_id=f"{pid}_designed", file_path=str(out_path), format="pdb")
     designed.attach_provenance(Provenance(tool_name="rfdiffusion", tool_version="1.1.0"))
     return {"designed_structure": designed}
+
+
+# Alias for backwards-compatibility and manifest uniformity
+parse_alphafold_db = parse_alphafold_fetcher
 

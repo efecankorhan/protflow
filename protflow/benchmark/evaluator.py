@@ -65,8 +65,8 @@ class NodeEvaluator:
             base_obj = next(iter(out_base.values()))
             cand_obj = next(iter(out_cand.values()))
 
-            base_val = float(base_obj.df["score"].iloc[0]) if hasattr(base_obj, "df") and "score" in base_obj.df.columns else 0.0
-            cand_val = float(cand_obj.df["score"].iloc[0]) if hasattr(cand_obj, "df") and "score" in cand_obj.df.columns else 0.0
+            base_val = float(base_obj.df["score"].iloc[0]) if hasattr(base_obj, "df") and not base_obj.df.empty and "score" in base_obj.df.columns else 0.0
+            cand_val = float(cand_obj.df["score"].iloc[0]) if hasattr(cand_obj, "df") and not cand_obj.df.empty and "score" in cand_obj.df.columns else 0.0
 
             rows.append({
                 "protein_id": pid,

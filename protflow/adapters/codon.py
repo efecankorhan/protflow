@@ -136,18 +136,19 @@ def compute_cai(codons: List[str], codon_weights: Dict[str, Dict[str, float]]) -
     """Calculates Codon Adaptation Index (CAI) as geometric mean of relative adaptiveness."""
     if not codons:
         return 0.0
+    flat_weights: Dict[str, float] = {}
+    for c_map in codon_weights.values():
+        max_f = max(c_map.values()) if c_map else 1e-9
+        for c, f in c_map.items():
+            flat_weights[c.upper()] = f / max(max_f, 1e-9)
+
     log_sum = 0.0
     valid_count = 0
     for c in codons:
         c_upper = c.upper()
-        # Find AA for this codon
-        for aa, c_map in codon_weights.items():
-            if c_upper in c_map:
-                max_f = max(c_map.values())
-                w_i = c_map[c_upper] / max(max_f, 1e-9)
-                log_sum += math.log(max(w_i, 1e-4))
-                valid_count += 1
-                break
+        if c_upper in flat_weights:
+            log_sum += math.log(max(flat_weights[c_upper], 1e-4))
+            valid_count += 1
     return round(math.exp(log_sum / max(valid_count, 1)), 3)
 
 

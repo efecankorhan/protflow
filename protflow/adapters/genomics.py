@@ -709,12 +709,19 @@ def parse_augustus(raw_data: Any, context: Dict[str, Any]) -> Dict[str, Any]:
                             best_e2_st = g_sub[j_idx].begin
 
                             if 30 <= gap_len <= max_intron:
+                                def _valid_splice_frame(e1_en: int, e2_st: int) -> bool:
+                                    cand_ex = curr_exons[:-1] + [(curr_exons[-1][0], e1_en), (e2_st, g_sub[j_idx].end)]
+                                    cand_seq = "".join(dna[s-1:e] for s, e in cand_ex)
+                                    if st_sign == "-":
+                                        cand_seq = reverse_complement(cand_seq)
+                                    return len(cand_seq) % 3 == 0 and "*" not in translate_dna(cand_seq, is_cds=True).rstrip("*")
+
                                 int_seq = dna[gap_st:gap_en]
                                 if st_sign == "+":
-                                    is_splice = (int_seq[:2] in ("GT", "GC") and int_seq[-2:] == "AG")
+                                    is_splice = (int_seq[:2] in ("GT", "GC") and int_seq[-2:] == "AG") and _valid_splice_frame(best_e1_en, best_e2_st)
                                 else:
                                     rc_int = reverse_complement(int_seq)
-                                    is_splice = (rc_int[:2] in ("GT", "GC") and rc_int[-2:] == "AG")
+                                    is_splice = (rc_int[:2] in ("GT", "GC") and rc_int[-2:] == "AG") and _valid_splice_frame(best_e1_en, best_e2_st)
 
                                 if not is_splice and 40 <= gap_len <= max_intron:
                                     for d_off in range(-20, 21):
@@ -728,7 +735,7 @@ def parse_augustus(raw_data: Any, context: Dict[str, Any]) -> Dict[str, Any]:
                                                     continue
                                                 if (st_sign == "+" and dna[a_p-2:a_p] == "AG") or (st_sign == "-" and dna[a_p-2:a_p] in ("AC", "GC")):
                                                     int_l = a_p - d_p
-                                                    if 35 <= int_l <= max_intron:
+                                                    if 35 <= int_l <= max_intron and _valid_splice_frame(d_p, a_p + 1):
                                                         is_splice = True
                                                         best_e1_en = d_p
                                                         best_e2_st = a_p + 1
@@ -760,7 +767,7 @@ def parse_augustus(raw_data: Any, context: Dict[str, Any]) -> Dict[str, Any]:
                     spliced_cds = "".join(dna[e_s-1:e_e] for e_s, e_e in rec_exons)
                     if m["strand"] == "-":
                         spliced_cds = reverse_complement(spliced_cds)
-                    prot = translate_dna(spliced_cds, is_cds=True).rstrip("*")
+                    prot = translate_dna(spliced_cds, is_cds=True).rstrip("*").split("*")[0]
                     # Filter spurious unspliced micro-ORFs in eukaryotic intergenic deserts
                     if not has_int and len(prot) < min_euk_len and m["score"] < 0.85:
                         continue

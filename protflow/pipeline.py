@@ -23,19 +23,14 @@ def evaluate_condition(condition: Optional[str], state: Dict[str, Any]) -> bool:
     if not condition:
         return True
     c = condition.strip()
-    if "not in state" in c:
-        key = c.split("not in state")[0].strip().strip("'\"")
-        return key not in state
-    if "in state" in c:
-        key = c.split("in state")[0].strip().strip("'\"")
-        return key in state
-    if "__" in c:
+    if "__" in c or "import" in c or "exec" in c or "eval" in c:
         return False
     try:
         # shortcut: simple eval restricted to state, upgrade to ast parser if untrusted users supply expressions
-        return bool(eval(c, {"__builtins__": {}}, {"state": state}))
+        return bool(eval(c, {"__builtins__": {"bool": bool, "len": len}}, {"state": state}))
     except Exception:
         return False
+
 
 
 @dataclass
@@ -70,7 +65,7 @@ class Pipeline:
         for s in data.get("steps", []):
             steps.append(PipelineStep(
                 name=s["name"],
-                manifest_path=s["manifest"],
+                manifest_path=s.get("manifest") or s.get("manifest_path", ""),
                 inputs=s.get("inputs", {}),
                 parameters=s.get("parameters", {}),
                 condition=s.get("condition"),
@@ -102,17 +97,26 @@ class Pipeline:
             manifests.append(Manifest.from_yaml(m_path))
         return manifests
 
-    def run(self, initial_state: Dict[str, BaseBioType]) -> Dict[str, Any]:
+    def run(
+        self,
+        initial_state: Dict[str, BaseBioType],
+        on_step: Optional[ Any ] = None,
+        allow_fallback_inputs: bool = False,
+    ) -> Dict[str, Any]:
         """
         Executes pipeline end-to-end, passing typed outputs between nodes.
         Returns full execution state containing all intermediate and final objects.
         """
+        import time
         state: Dict[str, BaseBioType] = dict(initial_state)
 
         for step in self.steps:
+            t0 = time.perf_counter()
             # Check condition if present
             if step.condition and not evaluate_condition(step.condition, state):
-                logging.getLogger("protflow.pipeline").info("Step '%s' skipped due to condition: %s", step.name, step.condition)
+                logger.info("Step '%s' skipped due to condition: %s", step.name, step.condition)
+                if on_step:
+                    on_step(step, {}, 0.0, True)
                 continue
 
             # Load step manifest
@@ -122,12 +126,26 @@ class Pipeline:
             # Map inputs from state
             step_inputs: Dict[str, BaseBioType] = {}
             for port_name, state_key in step.inputs.items():
-                if state_key not in state:
+                if state_key in state:
+                    step_inputs[port_name] = state[state_key]
+                elif allow_fallback_inputs and state_key.split(".")[-1] in state:
+                    step_inputs[port_name] = state[state_key.split(".")[-1]]
+                elif allow_fallback_inputs and port_name in state:
+                    step_inputs[port_name] = state[port_name]
+                elif not allow_fallback_inputs:
                     raise KeyError(
                         f"Step '{step.name}' requires input '{port_name}' from state key '{state_key}', "
                         f"but available keys are: {list(state.keys())}"
                     )
-                step_inputs[port_name] = state[state_key]
+
+            if allow_fallback_inputs:
+                for in_name, in_type in manifest.inputs.items():
+                    if in_name not in step_inputs:
+                        matching = [v for v in state.values() if type(v).__name__ == in_type or in_type in type(v).__name__]
+                        if matching:
+                            step_inputs[in_name] = matching[-1]
+                        else:
+                            raise ValueError(f"'{step.name}' düğümü için '{in_name}' ({in_type}) girdisi yok: önceki düğüm çıktısı bağlanmamış.")
 
             logger.info("Executing pipeline step: %s (%s)", step.name, manifest.name)
             outputs = self.runner.run(
@@ -135,11 +153,15 @@ class Pipeline:
                 inputs=step_inputs,
                 parameters=step.parameters
             )
+            dur_ms = round((time.perf_counter() - t0) * 1000.0, 1)
 
             # Store outputs into state (keyed by step output names or prefixed)
             for out_name, out_obj in outputs.items():
                 state[out_name] = out_obj
                 state[f"{step.name}.{out_name}"] = out_obj
+
+            if on_step:
+                on_step(step, outputs, dur_ms, False)
 
         return state
 

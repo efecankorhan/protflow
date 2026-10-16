@@ -200,32 +200,40 @@ def _run_progressive_msa(seq_dict: Dict[str, str]) -> Dict[str, str]:
     # Sort by length descending, reference is longest
     sorted_ids = sorted(seq_dict.keys(), key=lambda k: len(seq_dict[k]), reverse=True)
     ref_id = sorted_ids[0]
-    ref_seq = seq_dict[ref_id]
+    ref_orig = seq_dict[ref_id]
+    L = len(ref_orig)
 
-    aligned = {ref_id: ref_seq}
+    # shortcut: pairwise-to-reference progressive alignment; install MAFFT/FAMSA for exact multi-profile alignment
+    slot_ins: Dict[str, List[str]] = {ref_id: [""] * (L + 1)}
+    match_chars: Dict[str, List[str]] = {ref_id: list(ref_orig)}
+
     for sid in sorted_ids[1:]:
-        s = seq_dict[sid]
-        a_ref, a_s, _ = _needleman_wunsch(ref_seq, s)
-        # shortcut: pairwise-to-reference progressive alignment; install MAFFT/FAMSA for exact multi-profile alignment
-        if len(a_ref) > len(ref_seq):
-            ref_idx = 0
-            new_aligned = {k: [] for k in aligned.keys()}
-            for ch in a_ref:
-                if ref_idx < len(ref_seq) and ch == ref_seq[ref_idx]:
-                    for k in aligned.keys():
-                        new_aligned[k].append(aligned[k][ref_idx])
-                    ref_idx += 1
-                else:
-                    for k in aligned.keys():
-                        new_aligned[k].append('-')
-            aligned = {k: "".join(v) for k, v in new_aligned.items()}
+        a_ref, a_s, _ = _needleman_wunsch(ref_orig, seq_dict[sid])
+        ins = [""] * (L + 1)
+        m_ch: List[str] = []
+        r_idx = 0
+        for ch_r, ch_s in zip(a_ref, a_s):
+            if ch_r == "-":
+                ins[r_idx] += ch_s
+            else:
+                m_ch.append(ch_s)
+                r_idx += 1
+        slot_ins[sid] = ins
+        match_chars[sid] = m_ch
 
-        aligned[sid] = a_s
-        aligned[ref_id] = a_ref
-        ref_seq = a_ref
+    max_ins = [max(len(slot_ins[k][i]) for k in sorted_ids) for i in range(L + 1)]
+    aligned: Dict[str, str] = {}
+    for k in sorted_ids:
+        parts = []
+        for i in range(L):
+            if max_ins[i]:
+                parts.append(slot_ins[k][i].ljust(max_ins[i], "-"))
+            parts.append(match_chars[k][i] if i < len(match_chars[k]) else "-")
+        if max_ins[L]:
+            parts.append(slot_ins[k][L].ljust(max_ins[L], "-"))
+        aligned[k] = "".join(parts)
 
-    max_len = max(len(s) for s in aligned.values())
-    return {k: v.ljust(max_len, '-') for k, v in aligned.items()}
+    return aligned
 
 
 def _parse_fasta_alignment(text: str) -> Dict[str, str]:
@@ -343,7 +351,10 @@ def parse_mafft(raw_data: Any, context: Dict[str, Any]) -> Dict[str, Any]:
                 method = "mafft_local_binary"
                 tool_used = "mafft"
 
-        if not aligned_dict:
+        params = context.get("parameters") or {}
+        manifest = context.get("manifest")
+        allow_remote = bool(params.get("allow_remote_api") or (manifest and getattr(manifest, "is_remote", False)))
+        if not aligned_dict and allow_remote:
             aligned_dict = _run_mafft_ebi_api(fasta_text)
             if aligned_dict:
                 method = "mafft_embl_ebi_rest_api"

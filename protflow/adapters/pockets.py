@@ -40,7 +40,8 @@ def _detect_cavities_from_structure(structure: Structure, method: str) -> Pocket
                 if res.is_water(): continue
                 for atom in res:
                     coords.append([atom.pos.x, atom.pos.y, atom.pos.z])
-                    res_keys.append(f"{chain.name}:{res.seqid.num}")
+                    res_keys.append(f"{chain.name}:{res.seqid.num}_{res.name}")
+
 
     coords_np = np.array(coords) if coords else np.zeros((1, 3))
     center = coords_np.mean(axis=0) if len(coords_np) > 0 else np.array([0.0, 0.0, 0.0])

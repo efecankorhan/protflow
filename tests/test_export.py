@@ -57,3 +57,17 @@ def test_nextflow_export():
     nf_file = export_pipeline_to_nextflow([manifest])
     assert "nextflow.enable.dsl=2" in nf_file
     assert "process P2RANK {" in nf_file
+
+
+def test_nextflow_export_with_runner_input_flags():
+    manifest = Manifest.from_dict({
+        "name": "alphafold_fetcher",
+        "version": "1.0",
+        "inputs": {"protein": "Sequence"},
+        "outputs": {"structure": "Structure"},
+        "execution": {"type": "http", "url": "https://alphafold.ebi.ac.uk/api/{inputs.protein.protein_id}"},
+        "adapter": "protflow.adapters.structure_fetch:parse_alphafold_db"
+    })
+    proc_str = manifest_to_nextflow_process(manifest)
+    assert "--input protein=${protein}" in proc_str
+

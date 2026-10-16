@@ -100,6 +100,9 @@ class ProtFlowUIHandler(BaseHTTPRequestHandler):
                 self.send_error(404, "File not found")
 
     def do_POST(self):
+        length = int(self.headers.get("Content-Length", 0))
+        raw_body = self.rfile.read(length) if length > 0 else b""
+
         # Prevent cross-origin attacks from external web pages
         origin = self.headers.get("Origin")
         if origin:
@@ -115,9 +118,13 @@ class ProtFlowUIHandler(BaseHTTPRequestHandler):
 
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
-        length = int(self.headers.get("Content-Length", 0))
-        body = self.rfile.read(length).decode("utf-8") if length > 0 else "{}"
-        data = json.loads(body) if body else {}
+        body = raw_body.decode("utf-8", errors="replace") if raw_body else "{}"
+        try:
+            data = json.loads(body) if body else {}
+        except Exception:
+            self._send_json({"error": "Geçersiz JSON verisi"}, status=400)
+            return
+
 
         if path == "/api/manifest/test":
             self._handle_test_manifest(data)
@@ -380,12 +387,23 @@ class ProtFlowUIHandler(BaseHTTPRequestHandler):
     def _handle_save_pipeline(self, data: dict):
         try:
             pipe_data = data.get("pipeline", {})
+            if not isinstance(pipe_data, dict) or "steps" not in pipe_data or not isinstance(pipe_data["steps"], list):
+                raise ValueError("Geçersiz hat verisi: 'steps' listesi bulunamadı.")
+            for s in pipe_data["steps"]:
+                if not isinstance(s, dict) or "name" not in s or ("manifest" not in s and "manifest_path" not in s):
+                    raise ValueError(f"Geçersiz düğüm adımı tanımı: {s}")
+                m_path = PROJECT_ROOT / (s.get("manifest") or s.get("manifest_path"))
+                if not m_path.exists():
+                    raise FileNotFoundError(f"Manifest dosyası bulunamadı: {s.get('manifest') or s.get('manifest_path')}")
             target = PROJECT_ROOT / "bacterial_reference_pipeline.yaml"
-            with open(target, "w", encoding="utf-8") as f:
+            tmp_target = target.with_suffix(".tmp")
+            with open(tmp_target, "w", encoding="utf-8") as f:
                 yaml.safe_dump(pipe_data, f, sort_keys=False)
+            tmp_target.replace(target)
             self._send_json({"status": "SUCCESS", "message": "Hat yapılandırması başarıyla kaydedildi."})
         except Exception as e:
-            self._send_json({"status": "ERROR", "error": str(e)}, status=500)
+            self._send_json({"status": "ERROR", "error": str(e)}, status=400)
+
 
     def _topological_sort_steps(self, steps: list) -> list:
         if len(steps) <= 1:
@@ -480,10 +498,21 @@ class ProtFlowUIHandler(BaseHTTPRequestHandler):
                     g_seq.attach_provenance(Provenance(tool_name="prior_input", parameters={"curated_cds": cds_records}))
                 state["genome"] = g_seq
 
-            # Step-by-step execution to capture timing, status & preview
             for step in pipe.steps:
-                t0 = time.perf_counter()
-                if step.condition and not evaluate_condition(step.condition, state):
+                if step.parameters is None:
+                    step.parameters = {}
+                if step.name == "prior_input":
+                    if dna:
+                        step.parameters["genome_dna"] = dna
+                    if organism_id:
+                        step.parameters["organism"] = organism_id
+                    if cds_records:
+                        step.parameters["curated_cds"] = cds_records
+                elif "protein_select" in step.manifest_path and not step.parameters.get("protein_id"):
+                    step.parameters["protein_id"] = "auto"
+
+            def _on_step(step, outputs, dur_ms, skipped):
+                if skipped:
                     step_results.append({
                         "name": step.name,
                         "status": "skipped",
@@ -492,50 +521,7 @@ class ProtFlowUIHandler(BaseHTTPRequestHandler):
                         "filter_stats": None,
                         "outputs": {}
                     })
-                    continue
-
-                m_path = pipe.base_dir / step.manifest_path
-                manifest = Manifest.from_yaml(m_path)
-
-                if step.name == "prior_input":
-                    if step.parameters is None:
-                        step.parameters = {}
-                    if dna:
-                        step.parameters["genome_dna"] = dna
-                    if organism_id:
-                        step.parameters["organism"] = organism_id
-                    if cds_records:
-                        step.parameters["curated_cds"] = cds_records
-
-                if manifest.name == "protein_select":
-                    if step.parameters is None:
-                        step.parameters = {}
-                    if not step.parameters.get("protein_id"):
-                        step.parameters["protein_id"] = "auto"
-                step_inputs = {}
-                for p, k in step.inputs.items():
-                    if k in state:
-                        step_inputs[p] = state[k]
-                    elif k.split('.')[-1] in state:
-                        step_inputs[p] = state[k.split('.')[-1]]
-                    elif p in state:
-                        step_inputs[p] = state[p]
-
-                # Modular pipeline fallback: fill missing required inputs from available state
-                for in_name, in_type in manifest.inputs.items():
-                    if in_name not in step_inputs:
-                        matching = [v for v in state.values() if type(v).__name__ == in_type or in_type in type(v).__name__]
-                        if matching:
-                            step_inputs[in_name] = matching[-1]
-                        else:
-                            raise ValueError(f"'{step.name}' düğümü için '{in_name}' ({in_type}) girdisi yok: önceki düğüm çıktısı bağlanmamış.")
-
-                outputs = runner.run(manifest, step_inputs, parameters=step.parameters)
-                dur_ms = round((time.perf_counter() - t0) * 1000.0, 1)
-
-                for out_name, out_obj in outputs.items():
-                    state[out_name] = out_obj
-                    state[f"{step.name}.{out_name}"] = out_obj
+                    return
 
                 # Formulate mini-preview string & extract filter stats
                 preview_text = ""
@@ -698,6 +684,8 @@ class ProtFlowUIHandler(BaseHTTPRequestHandler):
                     "filter_stats": filter_stats,
                     "outputs": serialized_outputs
                 })
+
+            state = pipe.run(state, on_step=_on_step, allow_fallback_inputs=True)
 
             p_obj = state.get("priority_table")
             p_df = p_obj.df if (p_obj and hasattr(p_obj, "df")) else pd.DataFrame()

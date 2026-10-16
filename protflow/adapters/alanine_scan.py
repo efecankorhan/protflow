@@ -48,15 +48,17 @@ def generate_alanine_mutants(
             pos = pos_part.split("_")[0] if "_" in pos_part else pos_part
             wt_res = pos_part.split("_")[1] if "_" in pos_part else "X"
 
-            mutation_code = f"{chain}:{pos} {wt_res}->ALA"
+            mut_target = "VAL" if wt_res == "ALA" else "ALA"
+            mutation_code = f"{chain}:{pos} {wt_res}->{mut_target}"
             rows.append({
                 "protein_id": pid,
                 "candidate_priority_score": score,
                 "chain_id": chain,
                 "position": pos,
                 "wildtype": wt_res,
-                "mutant": "ALA",
+                "mutant": mut_target,
                 "mutation_code": mutation_code,
+
                 "experimental_assay": "Alanine-Scanning Spectrophotometric Activity Assay",
                 "validation_rationale": "Disrupts binding pocket cavity to test catalytic necessity"
             })

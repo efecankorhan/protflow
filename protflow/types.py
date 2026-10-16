@@ -85,9 +85,6 @@ class Structure(BaseBioType):
         p = Path(self.file_path)
         if not p.exists():
             raise FileNotFoundError(f"Structure file not found: {self.file_path}")
-        if self.format.lower() in ("cif", "mmcif") or p.suffix.lower() == ".cif":
-            doc = gemmi.cif.read_file(str(p))
-            return gemmi.make_structure_from_block(doc.sole_block())
         return gemmi.read_structure(str(p))
 
     def get_chains(self) -> List[str]:

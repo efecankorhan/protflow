@@ -2,8 +2,9 @@ name: bacterial_enzyme_prioritization
 steps:
   - name: prior_input
     manifest: manifests/00_prior_input.yaml
-    condition: "'genome' not in state"
+    condition: "'genome' not in state and 'proteins' not in state and 'protein' not in state"
     inputs: {}
+
     parameters:
       organism: ecoli_k12
 

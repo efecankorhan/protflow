@@ -5,6 +5,7 @@ from typing import Any, Dict
 import pandas as pd
 
 from protflow.types import Table
+from protflow.normalize import normalize_plddt, normalize_pocket_score, normalize_solubility_from_sasa
 
 
 # --- 8. Prioritization Combiner ---
@@ -37,9 +38,10 @@ def parse_prioritization(raw_data: Any, context: Dict[str, Any]) -> Dict[str, An
     f_df = foldseek_obj.df if foldseek_obj and hasattr(foldseek_obj, "df") else pd.DataFrame()
     novelty = float(f_df["novelty_score"].iloc[0]) if not f_df.empty and "novelty_score" in f_df.columns else 0.0
 
-    # Expression & solubility estimation: balanced hydrophobicity (~0.35 - 0.45 ideal)
-    solubility_est = max(0.0, 1.0 - abs(sasa_hydro - 0.40) * 2.0)
-    quality_norm = mean_plddt / 100.0
+    # Expression & solubility estimation from surface hydrophobicity
+    solubility_est = normalize_solubility_from_sasa(sasa_hydro)
+    quality_norm = normalize_plddt(mean_plddt)
+    pocket_norm = normalize_pocket_score(pocket_score)
 
     # Check if upstream filter passed
     passed_plddt = bool(q_df["passed_plddt_filter"].iloc[0]) if not q_df.empty and "passed_plddt_filter" in q_df.columns else True
@@ -51,11 +53,12 @@ def parse_prioritization(raw_data: Any, context: Dict[str, Any]) -> Dict[str, An
         # Composite priority score (0.0 to 1.0)
         final_score = (
             0.30 * quality_norm +
-            0.30 * pocket_score +
+            0.30 * pocket_norm +
             0.20 * solubility_est +
             0.20 * novelty
         )
         status = "CANDIDATE" if final_score >= 0.70 else "DEPURGED"
+
 
     summary_df = pd.DataFrame([{
         "protein_id": pid,

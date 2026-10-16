@@ -171,3 +171,13 @@ def test_viral_annotation_and_smart_protein_selection():
     assert sel_longest["protein"].protein_id == "VIRUS_0001"
 
 
+def test_compound_evaluate_condition():
+    from protflow.pipeline import evaluate_condition
+    st = {"protein": "P1", "filter_table": {"passed": True}}
+    assert evaluate_condition("'genome' not in state and 'proteins' not in state and 'protein' in state", st) is True
+    assert evaluate_condition("'genome' in state or 'protein' in state", st) is True
+    assert evaluate_condition("'genome' not in state and 'protein' not in state", st) is False
+    assert evaluate_condition("len(state) > 0 and 'protein' in state", st) is True
+
+
+

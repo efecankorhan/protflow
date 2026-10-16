@@ -194,6 +194,16 @@ def test_ui_server_security_hardening(ui_test_server):
         urllib.request.urlopen(req_bad_origin)
     assert exc.value.code == 403
 
+    # 4. Malformed JSON payload returns 400
+    req_malformed_json = urllib.request.Request(
+        f"{ui_test_server}/api/manifest/test",
+        data=b'{"invalid": json...',
+        headers={"Content-Type": "application/json"}
+    )
+    with pytest.raises(urllib.error.HTTPError) as exc:
+        urllib.request.urlopen(req_malformed_json)
+    assert exc.value.code == 400
+
 
 def test_ui_pipeline_run_with_prior_input(ui_test_server):
     """Verify that /api/pipeline/run accepts dynamic steps with manifest_path and custom genome input."""
@@ -329,6 +339,28 @@ def test_ui_structure_collection_serialization(ui_test_server):
     test_res = json.loads(res.read().decode("utf-8"))
     assert test_res["status"] == "PASS"
     assert "StructureCollection" in test_res["outputs"]["structure"]
+
+
+def test_ui_save_pipeline_validation(ui_test_server):
+    """Verify that saving invalid pipeline JSON returns HTTP 400."""
+    invalid_payload = {"pipeline": "corrupted_string_not_dict"}
+    req_post = urllib.request.Request(
+        f"{ui_test_server}/api/pipeline/save",
+        data=json.dumps(invalid_payload).encode("utf-8"),
+        headers={"Content-Type": "application/json"}
+    )
+    with pytest.raises(urllib.error.HTTPError) as exc_info:
+        urllib.request.urlopen(req_post)
+    assert exc_info.value.code == 400
+
+
+def test_alanine_scan_with_ala_wildtype():
+    p_df = pd.DataFrame([{"protein_id": "P1", "final_priority_score": 0.90}])
+    pockets_df = pd.DataFrame([{"protein_id": "P1", "residues": "A:15_ALA,A:16_TRP"}])
+    muts = generate_alanine_mutants(p_df, pockets_df, top_n=1)
+    assert "A:15 ALA->VAL" in muts["mutation_code"].values
+    assert "A:16 TRP->ALA" in muts["mutation_code"].values
+
 
 
 

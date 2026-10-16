@@ -340,10 +340,16 @@ def test_random_organism_pipeline(tmp_path):
 
 def test_generic_id_uniprot_resolution_safety():
     from protflow.adapters.structure_fetch import resolve_uniprot_afdb
-    # Generic IDs like 'g1', 'orf1', 'gene_0001' must not falsely match random UniProt entries
+    # Generic IDs like 'g1', 'orf1', 'gene_0001' or organism_g1 with AUGUSTUS descriptions must not match random UniProt entries
     assert resolve_uniprot_afdb("g1") is None
     assert resolve_uniprot_afdb("orf1") is None
     assert resolve_uniprot_afdb("gene_0001") is None
+    assert resolve_uniprot_afdb(
+        "BRACHIONUS_PLICATILIS_g1",
+        desc="Brachionus plicatilis | g1 AUGUSTUS predicted protein | 1..279",
+        organism="Brachionus plicatilis",
+        expected_len=93,
+    ) is None
 
 
 def test_negative_strand_cds_reverse_complement(tmp_path):

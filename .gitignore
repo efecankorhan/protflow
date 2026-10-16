@@ -17,6 +17,7 @@ tools/jre/
 tools/p2rank_2.5.1/
 tools/mmseqs/
 tools/scratch/
+scratch/
 
 # Virtual environments
 venv/

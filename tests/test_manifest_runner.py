@@ -368,6 +368,132 @@ def test_cache_invalidation_on_deleted_structure_file(tmp_path):
     assert Path(out2["designed_structure"].file_path).exists()
 
 
+def test_structure_collection_cache_and_plddt_filter_compatibility(tmp_path):
+    from protflow.types import StructureCollection, ResidueScore
+    import pandas as pd
+
+    runner = Runner(cache_dir=tmp_path / "cache", enable_cache=True)
+    p1 = tmp_path / "s1.pdb"
+    p2 = tmp_path / "s2.pdb"
+    p1.write_text("ATOM      1  CA  ALA A   1       1.0   2.0   3.0  1.00 85.00           C\n", encoding="utf-8")
+    p2.write_text("ATOM      1  CA  GLY A   1       2.0   3.0   4.0  1.00 45.00           C\n", encoding="utf-8")
+
+    sc1 = StructureCollection(protein_id="ENS", structures={"M1": Structure(protein_id="M1", file_path=str(p1))})
+    sc2 = StructureCollection(protein_id="ENS", structures={
+        "M1": Structure(protein_id="M1", file_path=str(p1)),
+        "M2": Structure(protein_id="M2", file_path=str(p2)),
+    })
+
+    m = Manifest.from_yaml(Path(__file__).resolve().parents[1] / "manifests" / "04_plddt_filter.yaml")
+    assert runner._compute_cache_key(m, {"structure": sc1}, {}) != runner._compute_cache_key(m, {"structure": sc2}, {})
+
+    scores = ResidueScore(protein_id="ENS", df=pd.DataFrame([
+        {"protein_id": "M1", "residue_number": 1, "score": 85.0},
+        {"protein_id": "M2", "residue_number": 1, "score": 45.0},
+    ]))
+    out = runner.run(m, {"structure": sc2, "residue_scores": scores}, output_dir=tmp_path / "plddt_out")
+    assert isinstance(out["structure"], StructureCollection)
+    assert len(out["structure"].structures) == 1
+
+
+def test_auto_wrap_sequence_to_collection(tmp_path):
+    from protflow.types import Sequence
+    dummy_cmd = 'python -c "import json; print(json.dumps([{\'pocket_id\': 1, \'score\': 0.88, \'center_x\': 1.0, \'center_y\': 2.0, \'center_z\': 3.0, \'volume\': 350.0, \'residues\': \'A:1,A:2\'}]))"'
+    m = Manifest.from_dict({
+        "name": "collection_node",
+        "version": "1.0",
+        "inputs": {"seqs": "SequenceCollection"},
+        "outputs": {"pockets": "Pocket"},
+        "execution": {"type": "local", "command": dummy_cmd},
+        "adapter": "protflow.adapters.parsers:parse_dummy_pocket_finder"
+    })
+    runner = Runner(cache_dir=tmp_path / "cache", enable_cache=False)
+    single_seq = Sequence(protein_id="P1", sequence="MKFLV")
+    # Must auto-wrap single Sequence without raising RunnerError
+    out = runner.run(m, {"seqs": single_seq}, output_dir=tmp_path / "out")
+    assert "pockets" in out
+
+
+def test_corrupted_cache_auto_recovery(tmp_path):
+    from protflow.types import Sequence
+    dummy_cmd = 'python -c "import json; print(json.dumps([{\'pocket_id\': 1, \'score\': 0.88, \'center_x\': 1.0, \'center_y\': 2.0, \'center_z\': 3.0, \'volume\': 350.0, \'residues\': \'A:1,A:2\'}]))"'
+    runner = Runner(cache_dir=tmp_path / "cache", enable_cache=True)
+    m = Manifest.from_dict({
+        "name": "cache_corrupt_test",
+        "version": "1.0",
+        "inputs": {"protein": "Sequence"},
+        "outputs": {"pockets": "Pocket"},
+        "execution": {"type": "local", "command": dummy_cmd},
+        "adapter": "protflow.adapters.parsers:parse_dummy_pocket_finder"
+    })
+    seq = Sequence(protein_id="P1", sequence="MKFLV")
+
+    out1 = runner.run(m, {"protein": seq})
+    assert "pockets" in out1
+
+    # Corrupt the cache file on disk (partial write simulation)
+    cache_file = next((tmp_path / "cache").glob("*.json"))
+    cache_file.write_text("{ incomplete json ...", encoding="utf-8")
+
+    # Run 2: Runner should auto-remove corrupt cache and recompute smoothly
+    out2 = runner.run(m, {"protein": seq})
+    assert "pockets" in out2
+    assert cache_file.exists()
+    assert cache_file.read_text(encoding="utf-8").startswith("{")
+
+
+def test_http_runner_url_encoding(tmp_path):
+    from protflow.types import Sequence
+    import requests
+
+    runner = Runner(cache_dir=tmp_path / "cache", enable_cache=False)
+    m = Manifest.from_dict({
+        "name": "http_url_test",
+        "version": "1.0",
+        "inputs": {"protein": "Sequence"},
+        "outputs": {"pockets": "Pocket"},
+        "execution": {
+            "type": "http",
+            "url": "http://127.0.0.1:9999/api/{inputs.protein.protein_id}?filter={param_val}",
+            "method": "GET"
+        },
+        "adapter": "protflow.adapters.parsers:parse_dummy_pocket_finder"
+    })
+    seq = Sequence(protein_id="sp|P12345|ABC def", sequence="MKFLV")
+
+    captured_urls = []
+    def mock_request(method, url, **kwargs):
+        captured_urls.append(url)
+        class MockResp:
+            status_code = 200
+            def json(self):
+                return [{"pocket_id": 1, "score": 0.88, "center_x": 1.0, "center_y": 2.0, "center_z": 3.0, "volume": 350.0, "residues": "A:1"}]
+            def raise_for_status(self):
+                pass
+        return MockResp()
+
+    orig_req = requests.request
+    requests.request = mock_request
+    try:
+        runner.run(m, {"protein": seq}, parameters={"param_val": "complex value & more"})
+    finally:
+        requests.request = orig_req
+
+    assert len(captured_urls) == 1
+    assert "sp%7CP12345%7CABC%20def" in captured_urls[0]
+    assert "complex%20value%20%26%20more" in captured_urls[0]
+
+
+def test_alphafold_db_adapter_alias():
+    from protflow.adapters.structure_fetch import parse_alphafold_db, parse_alphafold_fetcher
+    assert parse_alphafold_db is parse_alphafold_fetcher
+
+
+
+
+
+
+
 
 
 

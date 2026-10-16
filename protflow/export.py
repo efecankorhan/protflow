@@ -66,9 +66,12 @@ def manifest_to_nextflow_process(m: Manifest) -> str:
     if m.execution.type in ("local", "container") and m.execution.command:
         lines.append(f"    \"\"\"\n    {m.execution.command}\n    \"\"\"")
     else:
-        lines.append(f"    \"\"\"\n    # HTTP API / Custom Adapter: {m.adapter}\n    python -m protflow.runner --manifest {m.name}.yaml --sample ${{sample}}\n    \"\"\"")
+        in_args = " ".join(f"--input {k}=${{{k}}}" for k in m.inputs)
+        in_suffix = f" {in_args}" if in_args else ""
+        lines.append(f"    \"\"\"\n    # HTTP API / Custom Adapter: {m.adapter}\n    python -m protflow.runner --manifest {m.name}.yaml --sample ${{sample}}{in_suffix}\n    \"\"\"")
 
     lines.append("}")
+
     return "\n".join(lines)
 
 

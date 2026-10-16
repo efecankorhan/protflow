@@ -157,3 +157,57 @@ def test_automatic_node_evaluator(sample_data):
     assert report.speedup > 0.0
     assert "RECOMMENDED" in report.recommendation or "ACCEPTABLE" in report.recommendation
     assert not report.comparison_df.empty
+
+
+def test_automatic_node_evaluator_with_empty_output_table(tmp_path):
+    evaluator = NodeEvaluator()
+    dummy_cmd = 'python -c "import json; print(json.dumps([]))"'
+    m_base = Manifest.from_dict({
+        "name": "base_empty",
+        "version": "1.0",
+        "inputs": {"structure": "Structure"},
+        "outputs": {"pockets": "Pocket"},
+        "execution": {"type": "local", "command": dummy_cmd},
+        "adapter": "protflow.adapters.parsers:parse_dummy_pocket_finder"
+    })
+    m_cand = Manifest.from_dict({
+        "name": "cand_empty",
+        "version": "1.0",
+        "inputs": {"structure": "Structure"},
+        "outputs": {"pockets": "Pocket"},
+        "execution": {"type": "local", "command": dummy_cmd},
+        "adapter": "protflow.adapters.parsers:parse_dummy_pocket_finder"
+    })
+    st = Structure(protein_id="P_EMPTY", file_path="dummy.pdb")
+    # Must not raise IndexError when df is empty
+    report = evaluator.compare_nodes(m_cand, m_base, [{"structure": st}])
+    assert report.samples_tested == 1
+    assert report.mean_candidate_score == 0.0
+
+
+def test_pipeline_from_yaml_with_manifest_path_key(tmp_path):
+    from protflow.pipeline import Pipeline
+    yaml_content = """
+name: test_pipe
+steps:
+  - name: test_step
+    manifest_path: manifests/00_prior_input.yaml
+    inputs: {}
+"""
+    p_file = tmp_path / "test_pipe.yaml"
+    p_file.write_text(yaml_content, encoding="utf-8")
+    pipe = Pipeline.from_yaml(p_file)
+    assert len(pipe.steps) == 1
+    assert pipe.steps[0].manifest_path == "manifests/00_prior_input.yaml"
+
+
+def test_container_runner_command_interpolation(tmp_path):
+    from protflow.types import Sequence
+    runner = Runner(cache_dir=tmp_path / "cache", enable_cache=False)
+    seq = Sequence(protein_id="PROT_01", sequence="MKFLV")
+    cmd_tpl = "tool --in {inputs.protein.file_path} --out {output_dir} --opt {parameters.mode}"
+    formatted = runner._format_command(cmd_tpl, {"protein": seq}, {"mode": "fast"}, tmp_path / "work")
+    assert "PROT_01.fasta" in formatted
+    assert "--out" in formatted
+    assert "--opt fast" in formatted
+

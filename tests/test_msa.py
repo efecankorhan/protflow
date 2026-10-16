@@ -102,3 +102,18 @@ def test_parse_mafft_single_sequence():
     assert out["alignment"].identity == 1.0
     assert out["aligned_sequences"].provenance.tool_name == "passthrough"
 
+
+def test_progressive_msa_multi_sequence_insertions():
+    seqs = {
+        "s1": "MKTLLVV",
+        "s2": "MKAAATLLVV",
+        "s3": "MKTLLGGGVV",
+        "s4": "MKTLLVV",
+    }
+    aligned = _run_progressive_msa(seqs)
+    assert len(set(len(v) for v in aligned.values())) == 1
+    for k, orig in seqs.items():
+        assert aligned[k].replace("-", "") == orig
+    assert aligned["s1"] == aligned["s4"]
+
+
