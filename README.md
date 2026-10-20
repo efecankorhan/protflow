@@ -1,5 +1,5 @@
 # ProtFlow: Zero-Friction Bio-Pipeline Framework
-
+BİLİMSEL ÇIKTI ÜRETMEK İÇİN DOĞRU DEĞİLDİR ÖĞRENMEK İÇİN YAPILDI
 ProtFlow; genom analizi, protein 3B yapı modellemesi, bağlanma cebi tespiti, biyofiziksel yüzey filtreleme, çoklu sekans hizalama (MSA) ve kodon optimizasyonunu tek bir çatı altında birleştiren, tipli sözleşmelerle çalışan hesaplamalı biyoloji ve protein mühendisliği boru hattı omurgasıdır.
 
 Harici araçları (yerel binary, Docker konteyneri, uzak REST API) sıfır sürtünmeyle bağlar. C++ derleyiciniz veya GPU'nuz olmasa dahi **şeffaf düşüş (fallback)** katmanı sayesinde tüm hatları standart bir dizüstü bilgisayarda eksiksiz çalıştırır.
